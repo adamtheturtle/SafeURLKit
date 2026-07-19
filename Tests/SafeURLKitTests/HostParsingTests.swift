@@ -80,6 +80,38 @@ struct HostParsingTests {
     }
 
     @Test(
+        "A CR-LF pair is two forbidden controls, not one harmless grapheme cluster",
+        arguments: [
+            "169.254.169.254%0d%0a",
+            "127.0.0.1%0d%0a",
+            "localhost%0d%0a",
+            "metadata.google.internal%0d%0a",
+            "%0d%0aexample.com",
+            "exam%0d%0aple.com"
+        ]
+    )
+    func carriageReturnLineFeed(_ host: String) {
+        // The subtlest bug in this file's history. `"\r\n"` is a single `Character`, so a
+        // grapheme-level scan matched neither the CR nor the LF entry, and `Character.isASCII`
+        // reports true for the pair. A host ending `%0d%0a` decoded to a trailing `\r\n`,
+        // passed both gates, and - its last label now being non-numeric - was classified as a
+        // *domain*, defeating the IP-literal, reserved-address and reserved-name checks at
+        // once. Every scan is over `Unicode.Scalar` now.
+        #expect(throws: HostParsingError.self) {
+            try URLHost.parse(host)
+        }
+        #expect(!URLPolicy.publicHTTPS.allows("https://\(host)/"))
+    }
+
+    @Test("A decoded CR-LF host is not silently reclassified as a domain")
+    func carriageReturnLineFeedIsNotADomain() throws {
+        // Pinning the mechanism rather than just the outcome: if this ever parses again, it
+        // must at least still be seen as the address it is.
+        let error = try #require(URLPolicy.publicHTTPS.rejection(for: "https://127.0.0.1%0d%0a/"))
+        #expect(!error.description.contains("allow-list"))
+    }
+
+    @Test(
         "Empty labels and empty hosts are rejected",
         arguments: ["", ".", "..", "a..b", ".example.com", "example..com", "example.com.."]
     )

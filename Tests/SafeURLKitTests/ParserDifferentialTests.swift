@@ -116,6 +116,26 @@ struct ParserDifferentialTests {
         #expect(!Self.permissive.allows("https://exam\tple.com/"))
         #expect(!Self.permissive.allows("https://exam\nple.com/"))
         #expect(!Self.permissive.allows("https://exam\rple.com/"))
+        // A literal CR-LF pair is one `Character` but two forbidden scalars, and the scan
+        // is over scalars precisely so that this is not a hole.
+        #expect(!Self.permissive.allows("https://exam\r\nple.com/"))
+        #expect(!Self.permissive.allows("https://example.com/?a=x\r\nb"))
+        #expect(!Self.permissive.allows("https://example.com/\r\n"))
+    }
+
+    @Test("The forbidden-character scan sees both scalars of a CR-LF pair")
+    func crlfIsTwoScalars() throws {
+        // The property the fix rests on, stated directly: Swift's grapheme clustering is
+        // what made the pair invisible, and `Character.isASCII` agreeing made it worse.
+        let crlf = "\r\n"
+        #expect(crlf.count == 1)
+        #expect(crlf.unicodeScalars.count == 2)
+        let everyCharacterLooksASCII = crlf.allSatisfy(\.isASCII)
+        #expect(everyCharacterLooksASCII)
+
+        #expect(throws: URLStringParsingError.self) {
+            try ParsedURLString.parse("https://example.com/\r\n")
+        }
     }
 
     @Test("An authority with more than one colon is ambiguous and refused")

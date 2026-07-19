@@ -86,7 +86,11 @@ extension ParsedURLString {
     /// backslash is a path separator to WHATWG and an ordinary character to Foundation, so
     /// `https://evil.com\@trusted.com/` reads as two different origins. Rather than pick a
     /// side, refuse: no legitimate URL a caller should be fetching contains any of these.
-    private static let forbidden: Set<Character> = [
+    ///
+    /// Over `Unicode.Scalar`, not `Character`: CR followed by LF is a single grapheme
+    /// cluster, so a `Character`-level scan matches neither `"\u{000A}"` nor `"\u{000D}"`
+    /// and a raw CR-LF pair would pass straight through the check that exists to stop it.
+    private static let forbidden: Set<Unicode.Scalar> = [
         "\u{0009}", "\u{000A}", "\u{000D}", " ", "\\", "\u{0000}"
     ]
 
@@ -97,8 +101,10 @@ extension ParsedURLString {
     /// - Throws: A ``URLStringParsingError`` if the string is not an unambiguous
     ///   authority-based absolute URL.
     static func parse(_ input: String) throws(URLStringParsingError) -> ParsedURLString {
-        if let bad = input.first(where: { forbidden.contains($0) || $0.isC0Control }) {
-            throw .containsForbiddenCharacter(bad)
+        if let bad = input.unicodeScalars.first(where: {
+            forbidden.contains($0) || $0.isC0Control
+        }) {
+            throw .containsForbiddenCharacter(Character(bad))
         }
 
         guard let schemeEnd = input.firstIndex(of: ":") else {
@@ -211,13 +217,15 @@ extension ParsedURLString {
 
 // MARK: - Character helpers
 
-extension Character {
-    /// Whether this is a C0 control character.
+extension Unicode.Scalar {
+    /// Whether this is a C0 control character or DEL.
+    ///
+    /// Deliberately defined on `Unicode.Scalar` rather than `Character`: a `Character`-level
+    /// version has to decide what to do about multi-scalar clusters, and the only honest
+    /// answer - "this cluster is not a single control" - is exactly the answer that lets a
+    /// CR-LF pair through. Scanning scalars removes the question.
     var isC0Control: Bool {
-        guard let scalar = unicodeScalars.first, unicodeScalars.count == 1 else {
-            return false
-        }
-        return scalar.value <= 0x1F || scalar.value == 0x7F
+        value <= 0x1F || value == 0x7F
     }
 }
 

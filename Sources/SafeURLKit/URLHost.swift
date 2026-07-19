@@ -115,14 +115,22 @@ extension URLHost {
     /// The standard's set is "forbidden host code point, plus C0 controls and U+007F", and
     /// the control half is not decorative: because percent-decoding runs first, `%01` and
     /// `%7f` would otherwise decode straight into a domain and survive.
-    private static let forbiddenCodePoints: Set<Character> = [
+    /// The set is over `Unicode.Scalar`, not `Character`, and every scan below iterates
+    /// scalars for the same reason. A `Character` is a grapheme cluster, and CR immediately
+    /// followed by LF is *one* cluster carrying two scalars - so a `Character`-level scan
+    /// never sees either control, and `Character.isASCII` reports true for the pair as well.
+    /// A host ending `%0d%0a` would decode to a trailing `\r\n`, sail through both gates,
+    /// and - because the last label is then non-numeric - be classified as a domain rather
+    /// than an address, defeating the IP-literal, reserved-address, and reserved-name checks
+    /// in one move.
+    private static let forbiddenCodePoints: Set<Unicode.Scalar> = [
         " ", "#", "/", ":", "<", ">", "?", "@", "[", "\\", "]", "^", "|", "%"
     ]
 
-    /// Whether `character` may never appear in a domain: one of the explicit forbidden
-    /// code points, or any C0 control or DEL.
-    private static func isForbidden(_ character: Character) -> Bool {
-        forbiddenCodePoints.contains(character) || character.isC0Control
+    /// Whether `scalar` may never appear in a domain: one of the explicit forbidden code
+    /// points, or any C0 control or DEL.
+    private static func isForbidden(_ scalar: Unicode.Scalar) -> Bool {
+        forbiddenCodePoints.contains(scalar) || scalar.isC0Control
     }
 
     /// Parse a URL host string.
@@ -147,7 +155,7 @@ extension URLHost {
 
         let decoded = try percentDecoded(input)
 
-        guard decoded.allSatisfy(\.isASCII) else {
+        guard decoded.unicodeScalars.allSatisfy(\.isASCII) else {
             throw .nonASCII(decoded)
         }
 
@@ -160,8 +168,8 @@ extension URLHost {
             as: UTF8.self
         )
 
-        if let forbidden = domain.first(where: isForbidden) {
-            throw .forbiddenCodePoint(forbidden)
+        if let forbidden = domain.unicodeScalars.first(where: isForbidden) {
+            throw .forbiddenCodePoint(Character(forbidden))
         }
 
         // Strip a single trailing root dot before anything else looks at the labels. This
