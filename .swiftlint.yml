@@ -1,0 +1,53 @@
+# SwiftLint configuration for SafeURLKit.
+# Lints the hand-written sources and tests; the SwiftPM build directory holds
+# generated code (e.g. the test entry point) that we never want to lint.
+
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+
+disabled_rules:
+  # `String(decoding:as:)` is deliberate. Both uses convert bytes this package just
+  # produced by ASCII-lowercasing a valid String's own UTF-8, so UTF-8 validity is
+  # guaranteed; the failable initializer would add a dead error path that could only be
+  # handled by inventing a failure case that cannot occur. The one place where decoding
+  # really can fail - percent-decoding attacker-supplied bytes - does use the failable
+  # `String(bytes:encoding:)`.
+  - optional_data_string_conversion
+
+# The IPv6 parser, its embedded-IPv4 helper, and `URLPolicy.validate` all exceed the
+# default complexity ceiling of 10. In each case the number counts *rules*, not nesting:
+# the first two transcribe the WHATWG algorithms step for step, and `validate` is a flat
+# sequence of independent guards, one per policy axis. Splitting any of them would break
+# the line-by-line correspondence with the spec, or scatter the policy across helpers -
+# both of which make the security-critical code harder to audit, not easier.
+cyclomatic_complexity:
+  warning: 20
+  error: 25
+
+# The IANA registry tables and the adversarial payload corpus are both long literal
+# lists rather than logic, and both are more reviewable in one place than split across
+# files to satisfy a line count. The 1000-line error ceiling still catches real sprawl.
+file_length:
+  warning: 500
+  error: 1000
+
+# `SpecialPurposeAddresses.ipv4`/`.ipv6` are single array literals transcribed from the
+# IANA registries, and the bypass corpus tests are single argument lists. Those are one
+# expression each, not branching logic, so the default 50-line body limit measures
+# nothing useful here.
+function_body_length:
+  warning: 100
+  error: 150
+type_body_length:
+  warning: 400
+  error: 500
+
+identifier_name:
+  # Swift Testing's natural-language test names are written as backticked identifiers and
+  # legitimately begin with a type name or a number - `127.0.0.1 parses ...`. Requiring a
+  # lowercase first character would force rewordings that read worse in test output.
+  validates_start_with_lowercase: off
