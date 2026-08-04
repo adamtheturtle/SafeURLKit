@@ -123,6 +123,22 @@ struct ParserDifferentialTests {
         #expect(!Self.permissive.allows("https://example.com/\r\n"))
     }
 
+    @Test(
+        "C1 and Unicode format controls are rejected throughout the URL",
+        arguments: [
+            "https://example.com/path\u{0085}suffix",
+            "https://example.com/path\u{202E}suffix",
+            "https://example.com/path?key=before\u{200B}after",
+            "https://example.com/path#before\u{2066}after"
+        ]
+    )
+    func nonPrintingControls(_ urlString: String) {
+        #expect(throws: URLStringParsingError.self) {
+            try ParsedURLString.parse(urlString)
+        }
+        #expect(!Self.permissive.allows(urlString))
+    }
+
     @Test("The forbidden-character scan sees both scalars of a CR-LF pair")
     func crlfIsTwoScalars() throws {
         // The property the fix rests on, stated directly: Swift's grapheme clustering is
