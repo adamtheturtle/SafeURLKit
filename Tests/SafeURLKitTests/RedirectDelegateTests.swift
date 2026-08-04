@@ -23,7 +23,8 @@ struct RedirectDelegateTests {
     /// request it allowed through, or `nil` for a refusal.
     private func decision(
         _ delegate: PolicyEnforcingRedirectDelegate,
-        redirectingTo urlString: String
+        redirectingTo urlString: String,
+        rawLocation: String? = nil
     ) throws -> URLRequest? {
         let session = URLSession(configuration: .ephemeral)
         defer { session.finishTasksAndInvalidate() }
@@ -31,7 +32,12 @@ struct RedirectDelegateTests {
         let original = try #require(URL(string: "https://example.com/"))
         let target = try #require(URL(string: urlString))
         let response = try #require(
-            HTTPURLResponse(url: original, statusCode: 302, httpVersion: nil, headerFields: nil)
+            HTTPURLResponse(
+                url: original,
+                statusCode: 302,
+                httpVersion: nil,
+                headerFields: ["Location": rawLocation ?? urlString]
+            )
         )
 
         var result: URLRequest?
@@ -98,6 +104,39 @@ struct RedirectDelegateTests {
         }
         _ = try decision(delegate, redirectingTo: "https://example.org/")
         #expect(recorded.rejections.isEmpty)
+    }
+
+    @Test("The raw Location header must agree with Foundation's generated request")
+    func rawLocationMustAgree() throws {
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
+        let result = try decision(
+            delegate,
+            redirectingTo: "https://other.example.org/",
+            rawLocation: "https://evil.com/"
+        )
+        #expect(result == nil)
+    }
+
+    @Test("Ambiguous raw relative locations are rejected before normalization")
+    func ambiguousRawLocation() throws {
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
+        let result = try decision(
+            delegate,
+            redirectingTo: "https://example.com/evil",
+            rawLocation: "\\evil"
+        )
+        #expect(result == nil)
+    }
+
+    @Test("A relative Location is resolved against the response URL")
+    func relativeLocation() throws {
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
+        let result = try decision(
+            delegate,
+            redirectingTo: "https://example.com/next",
+            rawLocation: "/next"
+        )
+        #expect(result?.url?.absoluteString == "https://example.com/next")
     }
 
     @Test("The delegate exposes the policy it was built with")

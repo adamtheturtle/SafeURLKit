@@ -68,7 +68,7 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
     public func urlSession(
         _: URLSession,
         task _: URLSessionTask,
-        willPerformHTTPRedirection _: HTTPURLResponse,
+        willPerformHTTPRedirection response: HTTPURLResponse,
         newRequest request: URLRequest,
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
@@ -77,11 +77,66 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
             return
         }
         do {
-            _ = try policy.validate(url)
+            let validated = try validateRedirect(response: response, generatedURL: url)
+            guard validated.url.absoluteString == url.absoluteString else {
+                throw URLValidationError.parserDisagreement(
+                    safeURLKit: validated.url.absoluteString,
+                    foundation: url.absoluteString
+                )
+            }
             completionHandler(request)
-        } catch {
+        } catch let error as URLValidationError {
             onRejection?(url, error)
             completionHandler(nil)
+        } catch {
+            completionHandler(nil)
         }
+    }
+
+    private func validateRedirect(
+        response: HTTPURLResponse,
+        generatedURL: URL
+    ) throws(URLValidationError) -> ValidatedURL {
+        guard let location = response.value(forHTTPHeaderField: "Location") else {
+            throw .malformedURL(reason: "the redirect response has no Location header")
+        }
+
+        if Self.isAbsolute(location) {
+            return try policy.validate(location)
+        }
+
+        if let scalar = location.unicodeScalars.first(where: Self.isAmbiguousInLocation) {
+            throw .malformedURL(
+                reason: "the raw Location header contains ambiguous character \(Character(scalar).debugDescription)"
+            )
+        }
+
+        guard
+            let base = response.url,
+            let resolved = URL(string: location, relativeTo: base)?.absoluteURL
+        else {
+            throw .malformedURL(reason: "the relative Location header cannot be resolved")
+        }
+
+        let validated = try policy.validate(resolved.absoluteString)
+        guard resolved.absoluteString == generatedURL.absoluteString else {
+            throw .parserDisagreement(
+                safeURLKit: resolved.absoluteString,
+                foundation: generatedURL.absoluteString
+            )
+        }
+        return validated
+    }
+
+    private static func isAbsolute(_ location: String) -> Bool {
+        guard let colon = location.firstIndex(of: ":") else { return false }
+        let firstDelimiter = location.firstIndex { "/?#".contains($0) }
+        return firstDelimiter.map { colon < $0 } ?? true
+    }
+
+    private static func isAmbiguousInLocation(_ scalar: Unicode.Scalar) -> Bool {
+        scalar == "\\" || scalar == " " || scalar.isC0Control
+            || (0x7F ... 0x9F).contains(scalar.value)
+            || scalar.properties.generalCategory == .format
     }
 }
