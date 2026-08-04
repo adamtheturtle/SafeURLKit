@@ -55,6 +55,17 @@ struct URLPolicyTests {
         #expect(try policy.validate("https://example.com/").port == 443)
     }
 
+    @Test("Allowed schemes stay normalized after mutation")
+    func mutatedSchemesAreNormalized() throws {
+        var policy = URLPolicy()
+
+        policy.allowedSchemes = ["HTTP"]
+
+        #expect(policy.allowedSchemes == ["http"])
+        #expect(try policy.validate("http://example.com/").scheme == "http")
+        #expect(!policy.allows("https://example.com/"))
+    }
+
     @Test("Schemeless, relative, and authority-less URLs are malformed")
     func malformed() {
         for urlString in ["example.com", "/path", "https:example.com", "mailto:a@example.com", ""] {
