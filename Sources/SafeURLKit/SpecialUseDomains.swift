@@ -9,8 +9,11 @@
 //  them, and they resolve to exactly the destinations an SSRF check exists to keep a
 //  request away from.
 //
-//  Sources: IANA Special-Use Domain Names registry (RFC 6761, RFC 6762, RFC 8375,
-//  RFC 7686), plus the vendor-conventional `.internal` used by cloud metadata services.
+//  Source: IANA Special-Use Domain Names registry, last checked 2026-05-22, plus
+//  conservative vendor-conventional suffixes such as `.internal` used by cloud metadata
+//  services. To refresh this table, compare IANA's CSV registry, strip its trailing root
+//  dots, update the registry fixture in ReservedAddressTests, and update this date.
+//  https://www.iana.org/assignments/special-use-domain-names/special-use-domain-names.csv
 //
 
 import Foundation
@@ -36,9 +39,18 @@ public enum SpecialUseDomains {
         "home.arpa",
         "in-addr.arpa",
         "ip6.arpa",
+        "6tisch.arpa",
+        "eap.arpa",
+        "eap-noob.arpa",
+        "ipv4only.arpa",
+        "resolver.arpa",
+        "service.arpa",
         "test",
         "invalid",
         "example",
+        "example.com",
+        "example.net",
+        "example.org",
         "onion",
         "alt"
     ]

@@ -32,16 +32,16 @@ struct ParserDifferentialTests {
     @Test(
         "Anything that validates, Foundation reads the same way",
         arguments: [
-            "https://example.com/",
-            "https://example.com:8443/a/b?c=d#e",
-            "https://user:pass@example.com/",
+            "https://coderpad.io/",
+            "https://coderpad.io:8443/a/b?c=d#e",
+            "https://user:pass@coderpad.io/",
             "https://127.0.0.1/",
             "https://2130706433/",
             "https://0x7f.1/",
             "https://[::1]/",
             "https://[::ffff:127.0.0.1]:8080/",
             "http://localhost:3000/path",
-            "https://example.com./",
+            "https://coderpad.io./",
             "https://ex%61mple.com/"
         ]
     )
@@ -90,15 +90,15 @@ struct ParserDifferentialTests {
 
     @Test("The returned URL is the one that was validated")
     func returnedURL() throws {
-        let validated = try Self.permissive.validate("https://example.com:8443/a?b=c#d")
-        #expect(validated.url.absoluteString == "https://example.com:8443/a?b=c#d")
+        let validated = try Self.permissive.validate("https://coderpad.io:8443/a?b=c#d")
+        #expect(validated.url.absoluteString == "https://coderpad.io:8443/a?b=c#d")
     }
 
     @Test("A URL Foundation cannot parse at all is rejected")
     func foundationCannotParse() {
         // Nothing here should ever reach the disagreement check - the string parser refuses
         // first - but the policy must reject either way.
-        for urlString in ["https://[/", "https://exa[mple.com/", "https://example.com:99999/"] {
+        for urlString in ["https://[/", "https://exa[mple.com/", "https://coderpad.io:99999/"] {
             #expect(!Self.permissive.allows(urlString))
         }
     }
@@ -106,9 +106,9 @@ struct ParserDifferentialTests {
     @Test("Backslashes are refused because parsers disagree about them")
     func backslashes() {
         // WHATWG treats `\` as a path separator for HTTP URLs and Foundation does not, so
-        // `https://evil.com\@example.com/` is two different origins depending who reads it.
-        #expect(!Self.permissive.allows("https://evil.com\\@example.com/"))
-        #expect(!Self.permissive.allows("https://example.com\\..\\evil.com/"))
+        // `https://evil.com\@coderpad.io/` is two different origins depending who reads it.
+        #expect(!Self.permissive.allows("https://evil.com\\@coderpad.io/"))
+        #expect(!Self.permissive.allows("https://coderpad.io\\..\\evil.com/"))
     }
 
     @Test("Tabs and newlines are refused because WHATWG strips them and Foundation does not")
@@ -119,8 +119,8 @@ struct ParserDifferentialTests {
         // A literal CR-LF pair is one `Character` but two forbidden scalars, and the scan
         // is over scalars precisely so that this is not a hole.
         #expect(!Self.permissive.allows("https://exam\r\nple.com/"))
-        #expect(!Self.permissive.allows("https://example.com/?a=x\r\nb"))
-        #expect(!Self.permissive.allows("https://example.com/\r\n"))
+        #expect(!Self.permissive.allows("https://coderpad.io/?a=x\r\nb"))
+        #expect(!Self.permissive.allows("https://coderpad.io/\r\n"))
     }
 
     @Test(
@@ -150,13 +150,13 @@ struct ParserDifferentialTests {
         #expect(everyCharacterLooksASCII)
 
         #expect(throws: URLStringParsingError.self) {
-            try ParsedURLString.parse("https://example.com/\r\n")
+            try ParsedURLString.parse("https://coderpad.io/\r\n")
         }
     }
 
     @Test("An authority with more than one colon is ambiguous and refused")
     func ambiguousAuthority() {
-        #expect(!Self.permissive.allows("https://example.com:80:443/"))
+        #expect(!Self.permissive.allows("https://coderpad.io:80:443/"))
         #expect(!Self.permissive.allows("https://a:b:c/"))
     }
 
@@ -184,17 +184,17 @@ struct URLStringParserTests {
 
     @Test("Absent components are nil rather than empty")
     func absentComponents() throws {
-        let parsed = try ParsedURLString.parse("https://example.com")
+        let parsed = try ParsedURLString.parse("https://coderpad.io")
         #expect(parsed.userinfo == nil)
         #expect(parsed.port == nil)
         #expect(parsed.query == nil)
         #expect(parsed.fragment == nil)
-        #expect(parsed.hostText == "example.com")
+        #expect(parsed.hostText == "coderpad.io")
     }
 
     @Test("Present-but-empty components are distinguishable from absent ones")
     func emptyComponents() throws {
-        let parsed = try ParsedURLString.parse("https://@example.com/?#")
+        let parsed = try ParsedURLString.parse("https://@coderpad.io/?#")
         #expect(parsed.userinfo == "")
         #expect(parsed.query == "")
         #expect(parsed.fragment == "")
@@ -202,23 +202,23 @@ struct URLStringParserTests {
 
     @Test("A query inside a fragment is part of the fragment")
     func queryInFragment() throws {
-        let parsed = try ParsedURLString.parse("https://example.com/p#frag?notaquery")
+        let parsed = try ParsedURLString.parse("https://coderpad.io/p#frag?notaquery")
         #expect(parsed.fragment == "frag?notaquery")
         #expect(parsed.query == nil)
     }
 
     @Test("An `@` after the authority does not create userinfo")
     func atInPath() throws {
-        let parsed = try ParsedURLString.parse("https://example.com/a@b")
+        let parsed = try ParsedURLString.parse("https://coderpad.io/a@b")
         #expect(parsed.userinfo == nil)
-        #expect(parsed.hostText == "example.com")
+        #expect(parsed.hostText == "coderpad.io")
     }
 
     @Test("An `@` in the fragment does not create userinfo either")
     func atInFragment() throws {
-        let parsed = try ParsedURLString.parse("https://example.com#@evil.com")
+        let parsed = try ParsedURLString.parse("https://coderpad.io#@evil.com")
         #expect(parsed.userinfo == nil)
-        #expect(parsed.hostText == "example.com")
+        #expect(parsed.hostText == "coderpad.io")
         #expect(parsed.fragment == "@evil.com")
     }
 
@@ -232,16 +232,16 @@ struct URLStringParserTests {
         "Strings that are not unambiguous absolute URLs are refused",
         arguments: [
             "",
-            "example.com",
+            "coderpad.io",
             "/path",
-            "https:/example.com",
+            "https:/coderpad.io",
             "https://",
             "https://:8080/",
             "https://[::1/",
             "https://a:b:c/",
-            "https://example.com:80x/",
-            "https://example.com:99999/",
-            "1https://example.com/"
+            "https://coderpad.io:80x/",
+            "https://coderpad.io:99999/",
+            "1https://coderpad.io/"
         ]
     )
     func refused(_ input: String) {
