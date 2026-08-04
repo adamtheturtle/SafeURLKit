@@ -168,7 +168,8 @@ struct HostParsingTests {
 
     @Test("IPv6 literals must be bracketed, and brackets must close")
     func ipv6Brackets() throws {
-        #expect(try URLHost.parse("[::1]") == .ipv6(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 1])))
+        let loopback = try #require(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 1]))
+        #expect(try URLHost.parse("[::1]") == .ipv6(loopback))
         #expect(throws: HostParsingError.unclosedIPv6Bracket) {
             try URLHost.parse("[::1")
         }

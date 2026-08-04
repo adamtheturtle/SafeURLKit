@@ -31,7 +31,13 @@ struct IPv6ParsingTests {
         ]
     )
     func validLiterals(_ input: String, _ pieces: [UInt16]) throws {
-        #expect(try IPv6Address.parse(input) == IPv6Address(pieces: pieces))
+        #expect(try IPv6Address.parse(input) == #require(IPv6Address(pieces: pieces)))
+    }
+
+    @Test("The collection initializer rejects non-eight-piece addresses")
+    func collectionInitializerLength() {
+        #expect(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0]) == nil)
+        #expect(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 0, 0]) == nil)
     }
 
     @Test(
