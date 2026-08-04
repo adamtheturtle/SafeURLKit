@@ -185,13 +185,19 @@ struct ReservedIPv6RangeTests {
     @Test("Prefix masking works across piece boundaries")
     func prefixMasking() throws {
         // fc00::/7 splits inside the first piece, and fe80::/10 splits inside it too.
-        let uniqueLocal = try IPv6Prefix(IPv6Address.parse("fc00::"), 7)
+        let uniqueLocal = try #require(IPv6Prefix(IPv6Address.parse("fc00::"), 7))
         #expect(try uniqueLocal.contains(IPv6Address.parse("fdff:ffff::1")))
         #expect(try !uniqueLocal.contains(IPv6Address.parse("fe00::1")))
 
-        let linkLocal = try IPv6Prefix(IPv6Address.parse("fe80::"), 10)
+        let linkLocal = try #require(IPv6Prefix(IPv6Address.parse("fe80::"), 10))
         #expect(try linkLocal.contains(IPv6Address.parse("febf:ffff::1")))
         #expect(try !linkLocal.contains(IPv6Address.parse("fec0::1")))
+    }
+
+    @Test("Out-of-range prefix lengths fail without trapping", arguments: [129, 255])
+    func invalidPrefixLengths(_ bits: UInt8) throws {
+        let address = try IPv6Address.parse("2001:db8::")
+        #expect(IPv6Prefix(address, bits) == nil)
     }
 }
 
