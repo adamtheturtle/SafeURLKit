@@ -121,6 +121,29 @@ struct HostParsingTests {
         }
     }
 
+    @Test("DNS label lengths are bounded at 63 octets")
+    func labelLengthLimit() throws {
+        let accepted = String(repeating: "a", count: 63) + ".com"
+        #expect(try URLHost.parse(accepted) == .domain(accepted))
+
+        let rejected = String(repeating: "a", count: 64) + ".com"
+        #expect(throws: HostParsingError.labelTooLong(length: 64)) {
+            try URLHost.parse(rejected)
+        }
+    }
+
+    @Test("DNS names are bounded at 255 wire octets")
+    func domainWireLengthLimit() throws {
+        let prefix = [63, 63, 63].map { String(repeating: "a", count: $0) }
+        let accepted = (prefix + [String(repeating: "b", count: 61)]).joined(separator: ".")
+        #expect(try URLHost.parse(accepted) == .domain(accepted))
+
+        let rejected = (prefix + [String(repeating: "b", count: 62)]).joined(separator: ".")
+        #expect(throws: HostParsingError.domainTooLong(length: 256)) {
+            try URLHost.parse(rejected)
+        }
+    }
+
     @Test("Malformed percent-encoding is rejected")
     func malformedPercentEncoding() {
         for input in ["example%.com", "example%2.com", "example%zz.com", "%ff%fe.com"] {

@@ -73,6 +73,10 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
     case unclosedIPv6Bracket
     /// A domain label was empty, as in `a..b` or a leading dot.
     case emptyLabel
+    /// A DNS label exceeded the protocol maximum of 63 octets.
+    case labelTooLong(length: Int)
+    /// A DNS name exceeded the protocol maximum wire length of 255 octets.
+    case domainTooLong(length: Int)
     /// The host ends in a number and so must be an IPv4 address, but is not a valid one.
     case invalidIPv4Address(String)
     /// The text between square brackets is not a valid IPv6 literal.
@@ -95,6 +99,10 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
             "the host opens an IPv6 literal with `[` but does not close it"
         case .emptyLabel:
             "the host contains an empty label"
+        case let .labelTooLong(length):
+            "the host contains a \(length)-octet label, over the 63-octet DNS limit"
+        case let .domainTooLong(length):
+            "the host uses \(length) octets on the DNS wire, over the 255-octet limit"
         case let .invalidIPv4Address(host):
             "\(host.debugDescription) ends in a number but is not a valid IPv4 address"
         case let .invalidIPv6Address(host):
@@ -183,14 +191,24 @@ extension URLHost {
             throw .empty
         }
 
-        guard !domain.split(separator: ".", omittingEmptySubsequences: false)
-            .contains(where: \.isEmpty)
-        else {
+        let labels = domain.split(separator: ".", omittingEmptySubsequences: false)
+        guard !labels.contains(where: \.isEmpty) else {
             throw .emptyLabel
         }
 
         if IPv4Address.endsInANumber(domain) {
             return .ipv4(try IPv4Address.parse(domain))
+        }
+
+        if let oversized = labels.first(where: { $0.utf8.count > 63 }) {
+            throw .labelTooLong(length: oversized.utf8.count)
+        }
+
+        // Each label has a one-octet length prefix and a DNS name ends with a zero-length
+        // root label. The textual separators are not carried on the wire.
+        let wireLength = labels.reduce(1) { $0 + 1 + $1.utf8.count }
+        guard wireLength <= 255 else {
+            throw .domainTooLong(length: wireLength)
         }
 
         return .domain(domain)
