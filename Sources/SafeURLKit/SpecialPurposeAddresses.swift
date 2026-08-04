@@ -61,9 +61,9 @@ public struct IPv6Prefix: Sendable, Hashable, CustomStringConvertible {
 
     /// Create a prefix, masking off any host bits set in `base`.
     ///
-    /// - Precondition: `bits` is at most 128.
-    public init(_ base: IPv6Address, _ bits: UInt8) {
-        precondition(bits <= 128, "An IPv6 prefix is at most 128 bits")
+    /// Returns `nil` when `bits` is greater than 128.
+    public init?(_ base: IPv6Address, _ bits: UInt8) {
+        guard bits <= 128 else { return nil }
         self.bits = bits
         self.base = IPv6Address(pieces: Self.masked(base.pieces, bits: bits))
     }
@@ -183,39 +183,39 @@ public enum SpecialPurposeAddresses {
     /// is a *public* IPv4 address, such as `[::ffff:93.184.216.34]`, is still a spelling no
     /// legitimate URL uses, and the entry is what rejects it.
     public static let ipv6: [SpecialPurposeIPv6Range] = [
-        .init(.init(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 0]), 128), "unspecified"),
-        .init(.init(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 1]), 128), "loopback"),
+        .init(.init(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 0]), 128)!, "unspecified"),
+        .init(.init(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 1]), 128)!, "loopback"),
         .init(
-            .init(IPv6Address(pieces: [0, 0, 0, 0, 0, 0xFFFF, 0, 0]), 96),
+            .init(IPv6Address(pieces: [0, 0, 0, 0, 0, 0xFFFF, 0, 0]), 96)!,
             "IPv4-mapped"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x64, 0xFF9B, 0, 0, 0, 0, 0, 0]), 96),
+            .init(IPv6Address(pieces: [0x64, 0xFF9B, 0, 0, 0, 0, 0, 0]), 96)!,
             "IPv4-IPv6 translation (NAT64)"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x64, 0xFF9B, 1, 0, 0, 0, 0, 0]), 48),
+            .init(IPv6Address(pieces: [0x64, 0xFF9B, 1, 0, 0, 0, 0, 0]), 48)!,
             "IPv4-IPv6 translation (local-use NAT64)"
         ),
-        .init(.init(IPv6Address(pieces: [0x100, 0, 0, 0, 0, 0, 0, 0]), 64), "discard-only"),
+        .init(.init(IPv6Address(pieces: [0x100, 0, 0, 0, 0, 0, 0, 0]), 64)!, "discard-only"),
         .init(
-            .init(IPv6Address(pieces: [0x2001, 0, 0, 0, 0, 0, 0, 0]), 32),
+            .init(IPv6Address(pieces: [0x2001, 0, 0, 0, 0, 0, 0, 0]), 32)!,
             "Teredo tunnelling"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x2001, 0x2, 0, 0, 0, 0, 0, 0]), 48),
+            .init(IPv6Address(pieces: [0x2001, 0x2, 0, 0, 0, 0, 0, 0]), 48)!,
             "benchmarking"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x2001, 0x10, 0, 0, 0, 0, 0, 0]), 28),
+            .init(IPv6Address(pieces: [0x2001, 0x10, 0, 0, 0, 0, 0, 0]), 28)!,
             "deprecated ORCHID"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x2001, 0x20, 0, 0, 0, 0, 0, 0]), 28),
+            .init(IPv6Address(pieces: [0x2001, 0x20, 0, 0, 0, 0, 0, 0]), 28)!,
             "ORCHIDv2"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x2001, 0x30, 0, 0, 0, 0, 0, 0]), 28),
+            .init(IPv6Address(pieces: [0x2001, 0x30, 0, 0, 0, 0, 0, 0]), 28)!,
             "DRIP"
         ),
         // The covering registration, listed after its more specific children so that
@@ -224,33 +224,33 @@ public enum SpecialPurposeAddresses {
         // 2001:1::1, AMT at 2001:3::/32, AS112-v6 at 2001:4:112::/48 - without listing each.
         // Note that 2001:db8::/32 lies outside it and is a separate entry below.
         .init(
-            .init(IPv6Address(pieces: [0x2001, 0, 0, 0, 0, 0, 0, 0]), 23),
+            .init(IPv6Address(pieces: [0x2001, 0, 0, 0, 0, 0, 0, 0]), 23)!,
             "IETF protocol assignments"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x2001, 0xDB8, 0, 0, 0, 0, 0, 0]), 32),
+            .init(IPv6Address(pieces: [0x2001, 0xDB8, 0, 0, 0, 0, 0, 0]), 32)!,
             "documentation"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x2002, 0, 0, 0, 0, 0, 0, 0]), 16),
+            .init(IPv6Address(pieces: [0x2002, 0, 0, 0, 0, 0, 0, 0]), 16)!,
             "deprecated 6to4"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x3FFF, 0, 0, 0, 0, 0, 0, 0]), 20),
+            .init(IPv6Address(pieces: [0x3FFF, 0, 0, 0, 0, 0, 0, 0]), 20)!,
             "documentation"
         ),
         .init(
-            .init(IPv6Address(pieces: [0x5F00, 0, 0, 0, 0, 0, 0, 0]), 16),
+            .init(IPv6Address(pieces: [0x5F00, 0, 0, 0, 0, 0, 0, 0]), 16)!,
             "segment routing (SRv6) SIDs"
         ),
         // The IPv6 counterpart of 192.175.48.0/24, which is in the IPv4 table above.
         .init(
-            .init(IPv6Address(pieces: [0x2620, 0x4F, 0x8000, 0, 0, 0, 0, 0]), 48),
+            .init(IPv6Address(pieces: [0x2620, 0x4F, 0x8000, 0, 0, 0, 0, 0]), 48)!,
             "direct delegation AS112 service"
         ),
-        .init(.init(IPv6Address(pieces: [0xFC00, 0, 0, 0, 0, 0, 0, 0]), 7), "unique-local"),
-        .init(.init(IPv6Address(pieces: [0xFE80, 0, 0, 0, 0, 0, 0, 0]), 10), "link-local"),
-        .init(.init(IPv6Address(pieces: [0xFF00, 0, 0, 0, 0, 0, 0, 0]), 8), "multicast")
+        .init(.init(IPv6Address(pieces: [0xFC00, 0, 0, 0, 0, 0, 0, 0]), 7)!, "unique-local"),
+        .init(.init(IPv6Address(pieces: [0xFE80, 0, 0, 0, 0, 0, 0, 0]), 10)!, "link-local"),
+        .init(.init(IPv6Address(pieces: [0xFF00, 0, 0, 0, 0, 0, 0, 0]), 8)!, "multicast")
     ]
 
     /// The registry entry `address` falls in, or `nil` if it is ordinary public space.
