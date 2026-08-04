@@ -118,8 +118,8 @@ public struct URLPolicy: Sendable, Hashable {
     /// this far.
     public var allowsSpecialPurposeAddresses: Bool
 
-    /// The longest acceptable URL string, or `nil` for no limit. Defaults to 2048, the
-    /// conventional interoperable ceiling.
+    /// The greatest acceptable UTF-8 byte count for the URL string, or `nil` for no
+    /// limit. Defaults to 2048, the conventional interoperable ceiling.
     public var maximumLength: Int?
 
     /// The greatest number of non-empty path segments accepted, or `nil` for no limit.
@@ -199,8 +199,11 @@ extension URLPolicy {
     ///   safe to hand to `URLSession`.
     /// - Throws: A ``URLValidationError`` naming the first check that failed.
     public func validate(_ urlString: String) throws(URLValidationError) -> ValidatedURL {
-        if let maximumLength, urlString.count > maximumLength {
-            throw .tooLong(length: urlString.count, limit: maximumLength)
+        if let maximumLength {
+            let byteCount = urlString.utf8.count
+            if byteCount > maximumLength {
+                throw .tooLong(length: byteCount, limit: maximumLength)
+            }
         }
 
         let parsed: ParsedURLString
