@@ -24,7 +24,8 @@ struct RedirectDelegateTests {
     private func decision(
         _ delegate: PolicyEnforcingRedirectDelegate,
         redirectingTo urlString: String,
-        rawLocation: String? = nil
+        rawLocation: String? = nil,
+        headers: [String: String] = [:]
     ) throws -> URLRequest? {
         let session = URLSession(configuration: .ephemeral)
         defer { session.finishTasksAndInvalidate() }
@@ -45,7 +46,13 @@ struct RedirectDelegateTests {
             session,
             task: session.dataTask(with: original),
             willPerformHTTPRedirection: response,
-            newRequest: URLRequest(url: target)
+            newRequest: {
+                var request = URLRequest(url: target)
+                for (name, value) in headers {
+                    request.setValue(value, forHTTPHeaderField: name)
+                }
+                return request
+            }()
         ) { result = $0 }
         return result
     }
@@ -111,7 +118,7 @@ struct RedirectDelegateTests {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
         let result = try decision(
             delegate,
-            redirectingTo: "https://other.example.org/",
+            redirectingTo: "https://github.com/",
             rawLocation: "https://evil.com/"
         )
         #expect(result == nil)
@@ -137,6 +144,33 @@ struct RedirectDelegateTests {
             rawLocation: "/next"
         )
         #expect(result?.url?.absoluteString == "https://coderpad.io/next")
+    }
+
+    @Test("Cross-origin redirects strip sensitive caller headers")
+    func crossOriginHeaderSanitization() throws {
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
+        let request = try decision(
+            delegate,
+            redirectingTo: "https://github.com/",
+            headers: ["Authorization": "Bearer secret", "API-Key": "secret", "Accept": "text/plain"]
+        )
+
+        #expect(request?.value(forHTTPHeaderField: "Authorization") == nil)
+        #expect(request?.value(forHTTPHeaderField: "API-Key") == nil)
+        #expect(request?.value(forHTTPHeaderField: "Accept") == "text/plain")
+    }
+
+    @Test("Same-origin redirects preserve sensitive caller headers")
+    func sameOriginHeaderPreservation() throws {
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
+        let request = try decision(
+            delegate,
+            redirectingTo: "https://coderpad.io/next",
+            headers: ["Authorization": "Bearer secret", "API-Key": "secret"]
+        )
+
+        #expect(request?.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
+        #expect(request?.value(forHTTPHeaderField: "API-Key") == "secret")
     }
 
     @Test("The delegate exposes the policy it was built with")

@@ -47,22 +47,33 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
     /// on, so it must be safe to call from any thread.
     public let onRejection: (@Sendable (URL, URLValidationError) -> Void)?
 
+    /// Header fields removed when a redirect changes origin, compared case-insensitively.
+    /// Pass an empty set only when the caller deliberately permits credential forwarding.
+    public let sensitiveHeaderFields: Set<String>
+
     /// Create a delegate.
     ///
     /// - Parameters:
     ///   - policy: The policy to apply to each redirect target. Usually the same policy the
     ///     original URL was validated against.
     ///   - onRejection: An optional observer for refused redirects.
+    ///   - sensitiveHeaderFields: Fields to strip on cross-origin redirects. Names are
+    ///     compared case-insensitively.
     public init(
         policy: URLPolicy,
-        onRejection: (@Sendable (URL, URLValidationError) -> Void)? = nil
+        onRejection: (@Sendable (URL, URLValidationError) -> Void)? = nil,
+        sensitiveHeaderFields: Set<String> = [
+            "authorization", "proxy-authorization", "cookie", "cookie2", "api-key",
+            "x-api-key", "x-auth-token"
+        ]
     ) {
         self.policy = policy
         self.onRejection = onRejection
+        self.sensitiveHeaderFields = Set(sensitiveHeaderFields.map(\.lowercasedASCII))
         super.init()
     }
 
-    /// The `@unchecked Sendable` conformance is sound because both stored properties are
+    /// The `@unchecked Sendable` conformance is sound because all stored properties are
     /// immutable `let`s of `Sendable` type; the annotation is only needed because `NSObject`
     /// is not itself `Sendable`.
     public func urlSession(
@@ -84,7 +95,7 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
                     foundation: url.absoluteString
                 )
             }
-            completionHandler(request)
+            completionHandler(sanitized(request, redirectingFrom: response.url))
         } catch let error as URLValidationError {
             onRejection?(url, error)
             completionHandler(nil)
@@ -138,5 +149,37 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         scalar == "\\" || scalar == " " || scalar.isC0Control
             || (0x7F ... 0x9F).contains(scalar.value)
             || scalar.properties.generalCategory == .format
+    }
+
+    private func sanitized(_ request: URLRequest, redirectingFrom source: URL?) -> URLRequest {
+        guard
+            let source,
+            let target = request.url,
+            !Self.sameOrigin(source, target)
+        else {
+            return request
+        }
+
+        var result = request
+        for name in request.allHTTPHeaderFields.map({ Array($0.keys) }) ?? [] where
+            sensitiveHeaderFields.contains(name.lowercasedASCII) {
+            result.setValue(nil, forHTTPHeaderField: name)
+        }
+        return result
+    }
+
+    private static func sameOrigin(_ lhs: URL, _ rhs: URL) -> Bool {
+        guard
+            let leftScheme = lhs.scheme?.lowercasedASCII,
+            let rightScheme = rhs.scheme?.lowercasedASCII,
+            let leftHost = lhs.host?.lowercasedASCII,
+            let rightHost = rhs.host?.lowercasedASCII
+        else {
+            return false
+        }
+
+        let leftPort = lhs.port ?? URLPolicy.defaultPort(forScheme: leftScheme)
+        let rightPort = rhs.port ?? URLPolicy.defaultPort(forScheme: rightScheme)
+        return leftScheme == rightScheme && leftHost == rightHost && leftPort == rightPort
     }
 }
