@@ -29,9 +29,13 @@ public struct IPv4Prefix: Sendable, Hashable, CustomStringConvertible {
 
     /// Create a prefix, masking off any host bits set in `base`.
     ///
-    /// - Precondition: `bits` is at most 32.
-    public init(_ base: IPv4Address, _ bits: UInt8) {
-        precondition(bits <= 32, "An IPv4 prefix is at most 32 bits")
+    /// Returns `nil` when `bits` is greater than 32.
+    public init?(_ base: IPv4Address, _ bits: UInt8) {
+        guard bits <= 32 else { return nil }
+        self.init(validated: base, bits: bits)
+    }
+
+    fileprivate init(validated base: IPv4Address, bits: UInt8) {
         self.bits = bits
         let mask: UInt32 = bits == 0 ? 0 : ~0 << (32 - UInt32(bits))
         self.base = base.rawValue & mask
@@ -152,24 +156,24 @@ public enum SpecialPurposeMatch: Sendable, Hashable, CustomStringConvertible {
 public enum SpecialPurposeAddresses {
     /// The IPv4 special-purpose address registry.
     public static let ipv4: [SpecialPurposeIPv4Range] = [
-        .init(.init(IPv4Address(0, 0, 0, 0), 8), "this network"),
-        .init(.init(IPv4Address(10, 0, 0, 0), 8), "private-use (RFC 1918)"),
-        .init(.init(IPv4Address(100, 64, 0, 0), 10), "shared address space / CGNAT"),
-        .init(.init(IPv4Address(127, 0, 0, 0), 8), "loopback"),
-        .init(.init(IPv4Address(169, 254, 0, 0), 16), "link-local / cloud metadata"),
-        .init(.init(IPv4Address(172, 16, 0, 0), 12), "private-use (RFC 1918)"),
-        .init(.init(IPv4Address(192, 0, 0, 0), 24), "IETF protocol assignments"),
-        .init(.init(IPv4Address(192, 0, 2, 0), 24), "documentation (TEST-NET-1)"),
-        .init(.init(IPv4Address(192, 31, 196, 0), 24), "AS112-v4"),
-        .init(.init(IPv4Address(192, 52, 193, 0), 24), "AMT"),
-        .init(.init(IPv4Address(192, 88, 99, 0), 24), "deprecated 6to4 relay anycast"),
-        .init(.init(IPv4Address(192, 168, 0, 0), 16), "private-use (RFC 1918)"),
-        .init(.init(IPv4Address(192, 175, 48, 0), 24), "direct delegation AS112 service"),
-        .init(.init(IPv4Address(198, 18, 0, 0), 15), "benchmarking"),
-        .init(.init(IPv4Address(198, 51, 100, 0), 24), "documentation (TEST-NET-2)"),
-        .init(.init(IPv4Address(203, 0, 113, 0), 24), "documentation (TEST-NET-3)"),
-        .init(.init(IPv4Address(224, 0, 0, 0), 4), "multicast"),
-        .init(.init(IPv4Address(240, 0, 0, 0), 4), "reserved, including limited broadcast")
+        .init(.init(validated: IPv4Address(0, 0, 0, 0), bits: 8), "this network"),
+        .init(.init(validated: IPv4Address(10, 0, 0, 0), bits: 8), "private-use (RFC 1918)"),
+        .init(.init(validated: IPv4Address(100, 64, 0, 0), bits: 10), "shared address space / CGNAT"),
+        .init(.init(validated: IPv4Address(127, 0, 0, 0), bits: 8), "loopback"),
+        .init(.init(validated: IPv4Address(169, 254, 0, 0), bits: 16), "link-local / cloud metadata"),
+        .init(.init(validated: IPv4Address(172, 16, 0, 0), bits: 12), "private-use (RFC 1918)"),
+        .init(.init(validated: IPv4Address(192, 0, 0, 0), bits: 24), "IETF protocol assignments"),
+        .init(.init(validated: IPv4Address(192, 0, 2, 0), bits: 24), "documentation (TEST-NET-1)"),
+        .init(.init(validated: IPv4Address(192, 31, 196, 0), bits: 24), "AS112-v4"),
+        .init(.init(validated: IPv4Address(192, 52, 193, 0), bits: 24), "AMT"),
+        .init(.init(validated: IPv4Address(192, 88, 99, 0), bits: 24), "deprecated 6to4 relay anycast"),
+        .init(.init(validated: IPv4Address(192, 168, 0, 0), bits: 16), "private-use (RFC 1918)"),
+        .init(.init(validated: IPv4Address(192, 175, 48, 0), bits: 24), "direct delegation AS112 service"),
+        .init(.init(validated: IPv4Address(198, 18, 0, 0), bits: 15), "benchmarking"),
+        .init(.init(validated: IPv4Address(198, 51, 100, 0), bits: 24), "documentation (TEST-NET-2)"),
+        .init(.init(validated: IPv4Address(203, 0, 113, 0), bits: 24), "documentation (TEST-NET-3)"),
+        .init(.init(validated: IPv4Address(224, 0, 0, 0), bits: 4), "multicast"),
+        .init(.init(validated: IPv4Address(240, 0, 0, 0), bits: 4), "reserved, including limited broadcast")
     ]
 
     /// The IPv6 special-purpose address registry.

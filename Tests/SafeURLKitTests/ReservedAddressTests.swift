@@ -85,19 +85,25 @@ struct ReservedIPv4RangeTests {
     }
 
     @Test("Prefix masking ignores host bits set in the base address")
-    func prefixMasking() {
-        let prefix = IPv4Prefix(IPv4Address(10, 1, 2, 3), 8)
+    func prefixMasking() throws {
+        let prefix = try #require(IPv4Prefix(IPv4Address(10, 1, 2, 3), 8))
         #expect(prefix.description == "10.0.0.0/8")
         #expect(prefix.contains(IPv4Address(10, 255, 255, 255)))
         #expect(!prefix.contains(IPv4Address(11, 0, 0, 0)))
     }
 
     @Test("A zero-length prefix contains everything and a full-length one contains itself")
-    func prefixEdges() {
-        #expect(IPv4Prefix(IPv4Address(0, 0, 0, 0), 0).contains(IPv4Address(8, 8, 8, 8)))
-        let host = IPv4Prefix(IPv4Address(8, 8, 8, 8), 32)
+    func prefixEdges() throws {
+        let zero = try #require(IPv4Prefix(IPv4Address(0, 0, 0, 0), 0))
+        #expect(zero.contains(IPv4Address(8, 8, 8, 8)))
+        let host = try #require(IPv4Prefix(IPv4Address(8, 8, 8, 8), 32))
         #expect(host.contains(IPv4Address(8, 8, 8, 8)))
         #expect(!host.contains(IPv4Address(8, 8, 8, 9)))
+    }
+
+    @Test("Out-of-range prefix lengths fail without trapping", arguments: [33, 255])
+    func invalidPrefixLengths(_ bits: UInt8) {
+        #expect(IPv4Prefix(IPv4Address(10, 0, 0, 0), bits) == nil)
     }
 }
 
