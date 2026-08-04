@@ -96,6 +96,13 @@ extension ParsedURLString {
         "\u{0009}", "\u{000A}", "\u{000D}", " ", "\\", "\u{0000}"
     ]
 
+    private static func isForbidden(_ scalar: Unicode.Scalar) -> Bool {
+        forbidden.contains(scalar)
+            || scalar.isC0Control
+            || (0x7F ... 0x9F).contains(scalar.value)
+            || scalar.properties.generalCategory == .format
+    }
+
     /// Split a URL string.
     ///
     /// - Parameter input: The URL as written.
@@ -103,9 +110,7 @@ extension ParsedURLString {
     /// - Throws: A ``URLStringParsingError`` if the string is not an unambiguous
     ///   authority-based absolute URL.
     static func parse(_ input: String) throws(URLStringParsingError) -> ParsedURLString {
-        if let bad = input.unicodeScalars.first(where: {
-            forbidden.contains($0) || $0.isC0Control
-        }) {
+        if let bad = input.unicodeScalars.first(where: isForbidden) {
             throw .containsForbiddenCharacter(Character(bad))
         }
 
