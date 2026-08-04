@@ -29,7 +29,7 @@ struct RedirectDelegateTests {
         let session = URLSession(configuration: .ephemeral)
         defer { session.finishTasksAndInvalidate() }
 
-        let original = try #require(URL(string: "https://example.com/"))
+        let original = try #require(URL(string: "https://coderpad.io/"))
         let target = try #require(URL(string: urlString))
         let response = try #require(
             HTTPURLResponse(
@@ -53,8 +53,8 @@ struct RedirectDelegateTests {
     @Test("A redirect to a URL the policy accepts is followed")
     func allowedRedirect() throws {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
-        let allowed = try decision(delegate, redirectingTo: "https://other.example.org/")
-        #expect(allowed?.url?.absoluteString == "https://other.example.org/")
+        let allowed = try decision(delegate, redirectingTo: "https://other.github.com/")
+        #expect(allowed?.url?.absoluteString == "https://other.github.com/")
     }
 
     @Test(
@@ -76,9 +76,9 @@ struct RedirectDelegateTests {
 
     @Test("An origin allow-list is enforced across the redirect too")
     func allowListAcrossRedirect() throws {
-        let policy = URLPolicy(allowedOrigins: [.hostSuffix("example.com")])
+        let policy = URLPolicy(allowedOrigins: [.hostSuffix("coderpad.io")])
         let delegate = PolicyEnforcingRedirectDelegate(policy: policy)
-        #expect(try decision(delegate, redirectingTo: "https://app.example.com/") != nil)
+        #expect(try decision(delegate, redirectingTo: "https://app.coderpad.io/") != nil)
         #expect(try decision(delegate, redirectingTo: "https://evil.com/") == nil)
     }
 
@@ -102,7 +102,7 @@ struct RedirectDelegateTests {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS) { url, error in
             recorded.record(url: url, error: error)
         }
-        _ = try decision(delegate, redirectingTo: "https://example.org/")
+        _ = try decision(delegate, redirectingTo: "https://github.com/")
         #expect(recorded.rejections.isEmpty)
     }
 
@@ -122,7 +122,7 @@ struct RedirectDelegateTests {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
         let result = try decision(
             delegate,
-            redirectingTo: "https://example.com/evil",
+            redirectingTo: "https://coderpad.io/evil",
             rawLocation: "\\evil"
         )
         #expect(result == nil)
@@ -133,10 +133,10 @@ struct RedirectDelegateTests {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
         let result = try decision(
             delegate,
-            redirectingTo: "https://example.com/next",
+            redirectingTo: "https://coderpad.io/next",
             rawLocation: "/next"
         )
-        #expect(result?.url?.absoluteString == "https://example.com/next")
+        #expect(result?.url?.absoluteString == "https://coderpad.io/next")
     }
 
     @Test("The delegate exposes the policy it was built with")

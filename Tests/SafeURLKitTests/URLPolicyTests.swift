@@ -14,18 +14,18 @@ import Testing
 struct URLPolicyTests {
     @Test("The default policy accepts an ordinary public HTTPS URL")
     func happyPath() throws {
-        let validated = try URLPolicy.publicHTTPS.validate("https://example.com/a/b?c=d")
+        let validated = try URLPolicy.publicHTTPS.validate("https://coderpad.io/a/b?c=d")
         #expect(validated.scheme == "https")
-        #expect(validated.host == .domain("example.com"))
+        #expect(validated.host == .domain("coderpad.io"))
         #expect(validated.port == 443)
-        #expect(validated.origin == "https://example.com:443")
-        #expect(validated.url.absoluteString == "https://example.com/a/b?c=d")
+        #expect(validated.origin == "https://coderpad.io:443")
+        #expect(validated.url.absoluteString == "https://coderpad.io/a/b?c=d")
     }
 
     @Test("Path segment count remains bounded when the text limit is disabled")
     func pathSegmentLimit() throws {
         let path = Array(repeating: "x", count: 257).joined(separator: "/")
-        let url = "https://example.com/\(path)"
+        let url = "https://coderpad.io/\(path)"
         let policy = URLPolicy(maximumLength: nil)
 
         #expect(throws: URLValidationError.tooManyPathSegments(count: 257, limit: 256)) {
@@ -38,9 +38,9 @@ struct URLPolicyTests {
 
     @Test("An explicit default port is accepted and normalizes to the same origin")
     func explicitDefaultPort() throws {
-        let validated = try URLPolicy.publicHTTPS.validate("https://example.com:443/a")
+        let validated = try URLPolicy.publicHTTPS.validate("https://coderpad.io:443/a")
         #expect(validated.port == 443)
-        #expect(validated.origin == "https://example.com:443")
+        #expect(validated.origin == "https://coderpad.io:443")
     }
 
     // MARK: Schemes
@@ -48,14 +48,14 @@ struct URLPolicyTests {
     @Test(
         "Only allowed schemes pass, and scheme matching is case-insensitive",
         arguments: [
-            ("https://example.com/", true),
-            ("HTTPS://example.com/", true),
-            ("HtTpS://example.com/", true),
-            ("http://example.com/", false),
-            ("ftp://example.com/", false),
-            ("file://example.com/", false),
-            ("javascript://example.com/", false),
-            ("data://example.com/", false)
+            ("https://coderpad.io/", true),
+            ("HTTPS://coderpad.io/", true),
+            ("HtTpS://coderpad.io/", true),
+            ("http://coderpad.io/", false),
+            ("ftp://coderpad.io/", false),
+            ("file://coderpad.io/", false),
+            ("javascript://coderpad.io/", false),
+            ("data://coderpad.io/", false)
         ]
     )
     func schemes(_ urlString: String, _ allowed: Bool) {
@@ -65,8 +65,8 @@ struct URLPolicyTests {
     @Test("A policy may allow plaintext HTTP, as a self-hosted origin needs")
     func httpAllowed() throws {
         let policy = URLPolicy(allowedSchemes: ["https", "http"])
-        #expect(try policy.validate("http://example.com/").port == 80)
-        #expect(try policy.validate("https://example.com/").port == 443)
+        #expect(try policy.validate("http://coderpad.io/").port == 80)
+        #expect(try policy.validate("https://coderpad.io/").port == 443)
     }
 
     @Test("Allowed schemes stay normalized after mutation")
@@ -76,13 +76,13 @@ struct URLPolicyTests {
         policy.allowedSchemes = ["HTTP"]
 
         #expect(policy.allowedSchemes == ["http"])
-        #expect(try policy.validate("http://example.com/").scheme == "http")
-        #expect(!policy.allows("https://example.com/"))
+        #expect(try policy.validate("http://coderpad.io/").scheme == "http")
+        #expect(!policy.allows("https://coderpad.io/"))
     }
 
     @Test("Schemeless, relative, and authority-less URLs are malformed")
     func malformed() {
-        for urlString in ["example.com", "/path", "https:example.com", "mailto:a@example.com", ""] {
+        for urlString in ["coderpad.io", "/path", "https:coderpad.io", "mailto:a@coderpad.io", ""] {
             #expect(!URLPolicy.publicHTTPS.allows(urlString))
         }
     }
@@ -92,83 +92,83 @@ struct URLPolicyTests {
     @Test("Embedded credentials are rejected by default")
     func credentials() throws {
         #expect(throws: URLValidationError.credentialsPresent) {
-            try URLPolicy.publicHTTPS.validate("https://user:pass@example.com/")
+            try URLPolicy.publicHTTPS.validate("https://user:pass@coderpad.io/")
         }
         #expect(throws: URLValidationError.credentialsPresent) {
-            try URLPolicy.publicHTTPS.validate("https://user@example.com/")
+            try URLPolicy.publicHTTPS.validate("https://user@coderpad.io/")
         }
         // A bare `@` still counts: it is the marker that a userinfo section was written.
         #expect(throws: URLValidationError.credentialsPresent) {
-            try URLPolicy.publicHTTPS.validate("https://@example.com/")
+            try URLPolicy.publicHTTPS.validate("https://@coderpad.io/")
         }
     }
 
     @Test("Fragments are rejected by default and allowed on request")
     func fragments() throws {
         #expect(throws: URLValidationError.fragmentPresent) {
-            try URLPolicy.publicHTTPS.validate("https://example.com/a#frag")
+            try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#frag")
         }
         // An empty fragment is still a fragment.
         #expect(throws: URLValidationError.fragmentPresent) {
-            try URLPolicy.publicHTTPS.validate("https://example.com/a#")
+            try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#")
         }
         let permissive = URLPolicy(allowsFragment: true)
-        #expect(permissive.allows("https://example.com/a#frag"))
+        #expect(permissive.allows("https://coderpad.io/a#frag"))
     }
 
     @Test("Queries are allowed by default and can be forbidden")
     func queries() throws {
-        #expect(URLPolicy.publicHTTPS.allows("https://example.com/a?b=c"))
+        #expect(URLPolicy.publicHTTPS.allows("https://coderpad.io/a?b=c"))
         let thumbnailOnly = URLPolicy(allowsQuery: false)
         #expect(throws: URLValidationError.queryPresent) {
-            try thumbnailOnly.validate("https://example.com/a?b=c")
+            try thumbnailOnly.validate("https://coderpad.io/a?b=c")
         }
-        #expect(thumbnailOnly.allows("https://example.com/a"))
+        #expect(thumbnailOnly.allows("https://coderpad.io/a"))
     }
 
     // MARK: Ports
 
     @Test("The default port rule accepts only the scheme's default port")
     func defaultPortRule() throws {
-        #expect(URLPolicy.publicHTTPS.allows("https://example.com/"))
-        #expect(URLPolicy.publicHTTPS.allows("https://example.com:443/"))
+        #expect(URLPolicy.publicHTTPS.allows("https://coderpad.io/"))
+        #expect(URLPolicy.publicHTTPS.allows("https://coderpad.io:443/"))
         #expect(throws: URLValidationError.disallowedPort(8443)) {
-            try URLPolicy.publicHTTPS.validate("https://example.com:8443/")
+            try URLPolicy.publicHTTPS.validate("https://coderpad.io:8443/")
         }
     }
 
     @Test("An explicit port list is exactly what it says")
     func allowedPorts() throws {
         let policy = URLPolicy(portRule: .allowed([443, 8443]))
-        #expect(policy.allows("https://example.com/"))
-        #expect(policy.allows("https://example.com:8443/"))
+        #expect(policy.allows("https://coderpad.io/"))
+        #expect(policy.allows("https://coderpad.io:8443/"))
         #expect(throws: URLValidationError.disallowedPort(8444)) {
-            try policy.validate("https://example.com:8444/")
+            try policy.validate("https://coderpad.io:8444/")
         }
 
         // Omitting the default port from the list really does exclude it.
         let unusualOnly = URLPolicy(portRule: .allowed([8443]))
-        #expect(!unusualOnly.allows("https://example.com/"))
+        #expect(!unusualOnly.allows("https://coderpad.io/"))
     }
 
     @Test("The any-port rule accepts any port in range and still rejects nonsense")
     func anyPort() throws {
         let policy = URLPolicy(portRule: .any)
-        #expect(try policy.validate("https://example.com:1/").port == 1)
-        #expect(try policy.validate("https://example.com:65535/").port == 65535)
-        #expect(!policy.allows("https://example.com:65536/"))
-        #expect(!policy.allows("https://example.com:-1/"))
-        #expect(!policy.allows("https://example.com:80x/"))
+        #expect(try policy.validate("https://coderpad.io:1/").port == 1)
+        #expect(try policy.validate("https://coderpad.io:65535/").port == 65535)
+        #expect(!policy.allows("https://coderpad.io:65536/"))
+        #expect(!policy.allows("https://coderpad.io:-1/"))
+        #expect(!policy.allows("https://coderpad.io:80x/"))
         // An empty port means the scheme's default.
-        #expect(try policy.validate("https://example.com:/").port == 443)
+        #expect(try policy.validate("https://coderpad.io:/").port == 443)
     }
 
     @Test("A custom scheme with no default port must give one explicitly")
     func schemeWithoutDefaultPort() throws {
         let policy = URLPolicy(allowedSchemes: ["myapp"], portRule: .any)
         // Nothing names a destination port here, so there is nothing to approve.
-        #expect(!policy.allows("myapp://example.com/"))
-        #expect(try policy.validate("myapp://example.com:9000/").port == 9000)
+        #expect(!policy.allows("myapp://coderpad.io/"))
+        #expect(try policy.validate("myapp://coderpad.io:9000/").port == 9000)
     }
 
     @Test("Known schemes get their default port filled in")
@@ -248,7 +248,7 @@ struct URLPolicyTests {
 
     @Test("The length limit is applied to the string as written")
     func lengthLimit() throws {
-        let long = "https://example.com/" + String(repeating: "a", count: 3000)
+        let long = "https://coderpad.io/" + String(repeating: "a", count: 3000)
         #expect(throws: URLValidationError.self) {
             try URLPolicy.publicHTTPS.validate(long)
         }
@@ -261,8 +261,8 @@ struct URLPolicyTests {
 
     @Test("Validating a URL value checks its absolute string")
     func urlOverload() throws {
-        let url = try #require(URL(string: "https://example.com/a"))
-        #expect(try URLPolicy.publicHTTPS.validate(url).host == .domain("example.com"))
+        let url = try #require(URL(string: "https://coderpad.io/a"))
+        #expect(try URLPolicy.publicHTTPS.validate(url).host == .domain("coderpad.io"))
         #expect(URLPolicy.publicHTTPS.allows(url))
 
         let bad = try #require(URL(string: "https://127.0.0.1/"))

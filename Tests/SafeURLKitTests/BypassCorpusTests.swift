@@ -17,23 +17,23 @@ import Testing
 
 @Suite("Bypass corpus")
 struct BypassCorpusTests {
-    /// A policy that allows only `example.com` and its subdomains over HTTPS - the shape a
+    /// A policy that allows only `coderpad.io` and its subdomains over HTTPS - the shape a
     /// real call site has. Every payload below tries to reach somewhere else through it.
     private static let policy = URLPolicy(
         allowedSchemes: ["https"],
-        allowedOrigins: [.hostSuffix("example.com")]
+        allowedOrigins: [.hostSuffix("coderpad.io")]
     )
 
     @Test(
         "Userinfo confusion never reaches the host after the @",
         arguments: [
-            "https://example.com@evil.com/",
-            "https://example.com:443@evil.com/",
-            "https://example.com@evil.com@evil2.com/",
-            "https://user:example.com@evil.com/",
-            "https://evil.com@example.com@evil.com/",
-            "https://example.com%40evil.com/",
-            "https://example.com%2f@evil.com/"
+            "https://coderpad.io@evil.com/",
+            "https://coderpad.io:443@evil.com/",
+            "https://coderpad.io@evil.com@evil2.com/",
+            "https://user:coderpad.io@evil.com/",
+            "https://evil.com@coderpad.io@evil.com/",
+            "https://coderpad.io%40evil.com/",
+            "https://coderpad.io%2f@evil.com/"
         ]
     )
     func userinfoConfusion(_ urlString: String) {
@@ -45,19 +45,19 @@ struct BypassCorpusTests {
     @Test("The host is the text after the last @, not the first")
     func lastAtWins() throws {
         let policy = URLPolicy(allowsCredentials: true, allowsIPLiteralHosts: true)
-        #expect(try policy.validate("https://example.com@93.184.216.34/").host
+        #expect(try policy.validate("https://coderpad.io@93.184.216.34/").host
             == .ipv4(IPv4Address(93, 184, 216, 34)))
-        #expect(try policy.validate("https://a@b@example.org/").host == .domain("example.org"))
+        #expect(try policy.validate("https://a@b@github.com/").host == .domain("github.com"))
     }
 
     @Test(
         "Suffix rules are anchored, so a lookalike registration does not match",
         arguments: [
-            "https://evilexample.com/",
-            "https://notexample.com/",
-            "https://example.com.evil.com/",
-            "https://example.commercial.net/",
-            "https://xexample.com/"
+            "https://evilcoderpad.io/",
+            "https://notcoderpad.io/",
+            "https://coderpad.io.evil.com/",
+            "https://coderpad.iomercial.net/",
+            "https://xcoderpad.io/"
         ]
     )
     func suffixAnchoring(_ urlString: String) {
@@ -67,11 +67,11 @@ struct BypassCorpusTests {
     @Test(
         "Legitimate subdomains of an allowed suffix do match",
         arguments: [
-            "https://example.com/",
-            "https://www.example.com/",
-            "https://a.b.c.example.com/",
-            "https://EXAMPLE.COM/",
-            "https://example.com./"
+            "https://coderpad.io/",
+            "https://www.coderpad.io/",
+            "https://a.b.c.coderpad.io/",
+            "https://CODERPAD.IO/",
+            "https://coderpad.io./"
         ]
     )
     func suffixMatches(_ urlString: String) {
@@ -131,14 +131,14 @@ struct BypassCorpusTests {
     @Test(
         "Characters that URL parsers disagree about are refused rather than normalized",
         arguments: [
-            "https://example.com\\@evil.com/",
-            "https://evil.com\\.example.com/",
+            "https://coderpad.io\\@evil.com/",
+            "https://evil.com\\.coderpad.io/",
             "https://exam\tple.com/",
-            "https://example.com\n/",
-            "https://example.com\r\n/",
+            "https://coderpad.io\n/",
+            "https://coderpad.io\r\n/",
             "https://exa mple.com/",
-            "https://example.com\u{0000}.evil.com/",
-            "http\t s://example.com/"
+            "https://coderpad.io\u{0000}.evil.com/",
+            "http\t s://coderpad.io/"
         ]
     )
     func parserDisagreementCharacters(_ urlString: String) {
@@ -148,33 +148,33 @@ struct BypassCorpusTests {
     @Test(
         "Scheme games do not get past the scheme check",
         arguments: [
-            "javascript:alert(1)//https://example.com",
+            "javascript:alert(1)//https://coderpad.io",
             "data:text/html,<script>1</script>",
             "file:///etc/passwd",
-            "gopher://example.com/",
-            "https:/example.com/",
-            "https:example.com/",
-            "//example.com/",
-            "hTTps://example.com/"
+            "gopher://coderpad.io/",
+            "https:/coderpad.io/",
+            "https:coderpad.io/",
+            "//coderpad.io/",
+            "hTTps://coderpad.io/"
         ]
     )
     func schemeGames(_ urlString: String) throws {
         // The last one is a legitimate mixed-case `https`, which must be *accepted* - a
         // check that lowercases before comparing gets this right and a `==` does not.
-        let expected = urlString == "hTTps://example.com/"
+        let expected = urlString == "hTTps://coderpad.io/"
         #expect(Self.policy.allows(urlString) == expected)
     }
 
     @Test(
         "Percent-encoded hosts are decoded before the allow-list is consulted",
         arguments: [
-            "https://%65xample.com/",
-            "https://ex%61mple.com/",
-            "https://EXAMPLE%2ECOM/"
+            "https://%63oderpad.io/",
+            "https://c%6fderpad.io/",
+            "https://CODERPAD%2EIO/"
         ]
     )
     func percentEncodedAllowed(_ urlString: String) {
-        // These decode to `example.com`, so they legitimately match the suffix rule. The
+        // These decode to `coderpad.io`, so they legitimately match the suffix rule. The
         // point is that the decision is made on the decoded host, not the written one.
         #expect(Self.policy.allows(urlString))
     }
@@ -216,7 +216,7 @@ struct BypassCorpusTests {
 
     @Test(
         "Same host on a different port is a different origin",
-        arguments: ["https://example.com:8443/", "https://example.com:8080/", "https://example.com:1/"]
+        arguments: ["https://coderpad.io:8443/", "https://coderpad.io:8080/", "https://coderpad.io:1/"]
     )
     func portConfusion(_ urlString: String) {
         // The bug that #1748 was filed for: a host-only comparison lets an approved name on
@@ -227,13 +227,13 @@ struct BypassCorpusTests {
     @Test("An exact-origin rule pins the port as well as the host")
     func exactOrigin() throws {
         let policy = URLPolicy(
-            allowedOrigins: [.origin(scheme: "https", host: .domain("example.com"), port: 8443)],
+            allowedOrigins: [.origin(scheme: "https", host: .domain("coderpad.io"), port: 8443)],
             portRule: .any
         )
-        #expect(policy.allows("https://example.com:8443/"))
-        #expect(!policy.allows("https://example.com/"))
-        #expect(!policy.allows("https://example.com:443/"))
-        #expect(!policy.allows("https://other.example.com:8443/"))
+        #expect(policy.allows("https://coderpad.io:8443/"))
+        #expect(!policy.allows("https://coderpad.io/"))
+        #expect(!policy.allows("https://coderpad.io:443/"))
+        #expect(!policy.allows("https://other.coderpad.io:8443/"))
     }
 
     @Test("The port rule and the origin list are separate checks, and both must pass")
@@ -242,53 +242,53 @@ struct BypassCorpusTests {
         // its own, because the port rule is checked first and rejects before the origin
         // list is ever consulted.
         let origins: [OriginRule] = [
-            .origin(scheme: "https", host: .domain("example.com"), port: 8443)
+            .origin(scheme: "https", host: .domain("coderpad.io"), port: 8443)
         ]
-        #expect(!URLPolicy(allowedOrigins: origins).allows("https://example.com:8443/"))
+        #expect(!URLPolicy(allowedOrigins: origins).allows("https://coderpad.io:8443/"))
         #expect(
             URLPolicy(allowedOrigins: origins, portRule: .allowed([8443]))
-                .allows("https://example.com:8443/")
+                .allows("https://coderpad.io:8443/")
         )
     }
 
     @Test("A host rule accepts any port the port rule admits")
     func hostRule() throws {
         let policy = URLPolicy(
-            allowedOrigins: [.host(.domain("example.com"))],
+            allowedOrigins: [.host(.domain("coderpad.io"))],
             portRule: .allowed([443, 8443])
         )
-        #expect(policy.allows("https://example.com/"))
-        #expect(policy.allows("https://example.com:8443/"))
-        #expect(!policy.allows("https://example.com:9000/"))
-        #expect(!policy.allows("https://other.example.com/"))
+        #expect(policy.allows("https://coderpad.io/"))
+        #expect(policy.allows("https://coderpad.io:8443/"))
+        #expect(!policy.allows("https://coderpad.io:9000/"))
+        #expect(!policy.allows("https://other.coderpad.io/"))
     }
 
     @Test("An origin rule can be written as a URL string, and fails closed if unparseable")
     func originFromString() throws {
-        let rule = try #require(OriginRule.origin(matching: "https://example.com:8443"))
-        #expect(rule == .origin(scheme: "https", host: .domain("example.com"), port: 8443))
+        let rule = try #require(OriginRule.origin(matching: "https://coderpad.io:8443"))
+        #expect(rule == .origin(scheme: "https", host: .domain("coderpad.io"), port: 8443))
         #expect(OriginRule.origin(matching: "not a url") == nil)
         #expect(OriginRule.origin(matching: "") == nil)
 
         // A default-port origin string produces a rule with no explicit port, which then
         // matches both spellings of that origin.
-        let implicit = try #require(OriginRule.origin(matching: "https://example.com"))
+        let implicit = try #require(OriginRule.origin(matching: "https://coderpad.io"))
         let policy = URLPolicy(allowedOrigins: [implicit])
-        #expect(policy.allows("https://example.com/"))
-        #expect(policy.allows("https://example.com:443/"))
+        #expect(policy.allows("https://coderpad.io/"))
+        #expect(policy.allows("https://coderpad.io:443/"))
     }
 
     @Test("An empty origin list rejects everything, so a misconfiguration fails closed")
     func emptyAllowList() {
         let policy = URLPolicy(allowedOrigins: [])
-        #expect(!policy.allows("https://example.com/"))
+        #expect(!policy.allows("https://coderpad.io/"))
         #expect(!policy.allows("https://anything.at.all/"))
     }
 
     @Test("A nil origin list means no host restriction, not no checks")
     func nilAllowList() {
         let policy = URLPolicy(allowedOrigins: nil)
-        #expect(policy.allows("https://anything.example.org/"))
+        #expect(policy.allows("https://anything.github.com/"))
         #expect(!policy.allows("https://127.0.0.1/"))
     }
 }
