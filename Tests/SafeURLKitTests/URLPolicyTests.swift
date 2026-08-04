@@ -22,6 +22,20 @@ struct URLPolicyTests {
         #expect(validated.url.absoluteString == "https://example.com/a/b?c=d")
     }
 
+    @Test("Path segment count remains bounded when the text limit is disabled")
+    func pathSegmentLimit() throws {
+        let path = Array(repeating: "x", count: 257).joined(separator: "/")
+        let url = "https://example.com/\(path)"
+        let policy = URLPolicy(maximumLength: nil)
+
+        #expect(throws: URLValidationError.tooManyPathSegments(count: 257, limit: 256)) {
+            try policy.validate(url)
+        }
+
+        let explicitlyUnbounded = URLPolicy(maximumLength: nil, maximumPathSegments: nil)
+        #expect(explicitlyUnbounded.allows(url))
+    }
+
     @Test("An explicit default port is accepted and normalizes to the same origin")
     func explicitDefaultPort() throws {
         let validated = try URLPolicy.publicHTTPS.validate("https://example.com:443/a")

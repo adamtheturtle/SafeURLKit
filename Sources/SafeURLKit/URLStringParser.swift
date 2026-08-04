@@ -35,6 +35,8 @@ struct ParsedURLString: Sendable, Hashable {
     var port: Int?
     /// The query, without the `?`, or `nil` if there was none.
     var query: String?
+    /// The path exactly as written, including its leading slash when present.
+    var path: String
     /// The fragment, without the `#`, or `nil` if there was none.
     var fragment: String?
 }
@@ -153,6 +155,7 @@ extension ParsedURLString {
         }
         if let question = rest.firstIndex(of: "?") {
             query = String(rest[rest.index(after: question)...])
+            rest = rest[..<question]
         }
 
         return ParsedURLString(
@@ -161,6 +164,7 @@ extension ParsedURLString {
             hostText: hostText,
             port: port,
             query: query,
+            path: String(rest),
             fragment: fragment
         )
     }
