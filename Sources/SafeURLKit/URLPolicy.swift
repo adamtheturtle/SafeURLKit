@@ -117,6 +117,11 @@ public struct URLPolicy: Sendable, Hashable {
     /// conventional interoperable ceiling.
     public var maximumLength: Int?
 
+    /// The greatest number of non-empty path segments accepted, or `nil` for no limit.
+    /// Defaults to 256 so disabling ``maximumLength`` does not also permit structurally
+    /// unbounded paths.
+    public var maximumPathSegments: Int?
+
     /// Create a policy. Every parameter defaults to its strict setting except
     /// ``allowsQuery``.
     public init(
@@ -129,7 +134,8 @@ public struct URLPolicy: Sendable, Hashable {
         allowsIPLiteralHosts: Bool = false,
         allowsSpecialUseHostNames: Bool = false,
         allowsSpecialPurposeAddresses: Bool = false,
-        maximumLength: Int? = 2048
+        maximumLength: Int? = 2048,
+        maximumPathSegments: Int? = 256
     ) {
         self.allowedSchemes = Set(allowedSchemes.map(\.lowercasedASCII))
         self.allowedOrigins = allowedOrigins
@@ -141,6 +147,7 @@ public struct URLPolicy: Sendable, Hashable {
         self.allowsSpecialUseHostNames = allowsSpecialUseHostNames
         self.allowsSpecialPurposeAddresses = allowsSpecialPurposeAddresses
         self.maximumLength = maximumLength
+        self.maximumPathSegments = maximumPathSegments
     }
 }
 
@@ -196,6 +203,13 @@ extension URLPolicy {
             parsed = try ParsedURLString.parse(urlString)
         } catch {
             throw .malformedURL(reason: error.description)
+        }
+
+        if let maximumPathSegments {
+            let count = parsed.path.split(separator: "/", omittingEmptySubsequences: true).count
+            if count > maximumPathSegments {
+                throw .tooManyPathSegments(count: count, limit: maximumPathSegments)
+            }
         }
 
         guard allowedSchemes.contains(parsed.scheme) else {

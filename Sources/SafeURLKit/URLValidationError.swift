@@ -28,6 +28,9 @@ public enum URLValidationError: Error, Sendable, Hashable, CustomStringConvertib
     /// The URL string is longer than the policy's ``URLPolicy/maximumLength``.
     case tooLong(length: Int, limit: Int)
 
+    /// The URL path contains more segments than ``URLPolicy/maximumPathSegments`` permits.
+    case tooManyPathSegments(count: Int, limit: Int)
+
     /// The scheme is not in the policy's ``URLPolicy/allowedSchemes``.
     case disallowedScheme(String)
 
@@ -70,6 +73,8 @@ public enum URLValidationError: Error, Sendable, Hashable, CustomStringConvertib
             """
         case let .tooLong(length, limit):
             "the URL is \(length) characters, over the \(limit)-character limit"
+        case let .tooManyPathSegments(count, limit):
+            "the URL path has \(count) segments, over the \(limit)-segment limit"
         case let .disallowedScheme(scheme):
             "the scheme \(scheme.debugDescription) is not allowed"
         case .credentialsPresent:
