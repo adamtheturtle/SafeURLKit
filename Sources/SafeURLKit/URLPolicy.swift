@@ -55,7 +55,12 @@ public enum PortRule: Sendable, Hashable {
 /// ```
 public struct URLPolicy: Sendable, Hashable {
     /// The permitted schemes, ASCII-lowercased. Defaults to `["https"]`.
-    public var allowedSchemes: Set<String>
+    public var allowedSchemes: Set<String> {
+        get { normalizedAllowedSchemes }
+        set { normalizedAllowedSchemes = Set(newValue.map(\.lowercasedASCII)) }
+    }
+
+    private var normalizedAllowedSchemes: Set<String>
 
     /// The permitted origins, or `nil` to accept any host that passes the other checks.
     ///
@@ -131,7 +136,7 @@ public struct URLPolicy: Sendable, Hashable {
         allowsSpecialPurposeAddresses: Bool = false,
         maximumLength: Int? = 2048
     ) {
-        self.allowedSchemes = Set(allowedSchemes.map(\.lowercasedASCII))
+        normalizedAllowedSchemes = Set(allowedSchemes.map(\.lowercasedASCII))
         self.allowedOrigins = allowedOrigins
         self.portRule = portRule
         self.allowsCredentials = allowsCredentials
