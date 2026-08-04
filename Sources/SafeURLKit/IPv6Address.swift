@@ -22,9 +22,9 @@ public struct IPv6Address: Sendable, Hashable, CustomStringConvertible {
 
     /// Create an address from eight 16-bit pieces, most significant first.
     ///
-    /// - Precondition: `pieces` has exactly eight elements.
-    public init(pieces: [UInt16]) {
-        precondition(pieces.count == 8, "An IPv6 address has exactly eight pieces")
+    /// Returns `nil` when `pieces` does not contain exactly eight elements.
+    public init?(pieces: [UInt16]) {
+        guard pieces.count == 8 else { return nil }
         self.pieces = pieces
     }
 
@@ -187,7 +187,7 @@ extension IPv6Address {
             throw .invalidIPv6Address(input)
         }
 
-        return IPv6Address(pieces: address)
+        return IPv6Address(pieces: address)!
     }
 
     /// Parse the trailing dotted-quad of forms like `::ffff:127.0.0.1`, writing it into the
