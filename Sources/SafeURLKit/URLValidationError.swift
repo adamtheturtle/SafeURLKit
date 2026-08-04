@@ -25,7 +25,7 @@ public enum URLValidationError: Error, Sendable, Hashable, CustomStringConvertib
     /// reasoning.
     case parserDisagreement(safeURLKit: String, foundation: String)
 
-    /// The URL string is longer than the policy's ``URLPolicy/maximumLength``.
+    /// The URL string has more UTF-8 bytes than the policy's ``URLPolicy/maximumLength``.
     case tooLong(length: Int, limit: Int)
 
     /// The URL path contains more segments than ``URLPolicy/maximumPathSegments`` permits.
@@ -72,7 +72,7 @@ public enum URLValidationError: Error, Sendable, Hashable, CustomStringConvertib
             and Foundation reads it as \(foundation.debugDescription)
             """
         case let .tooLong(length, limit):
-            "the URL is \(length) characters, over the \(limit)-character limit"
+            "the URL is \(length) UTF-8 bytes, over the \(limit)-byte limit"
         case let .tooManyPathSegments(count, limit):
             "the URL path has \(count) segments, over the \(limit)-segment limit"
         case let .disallowedScheme(scheme):

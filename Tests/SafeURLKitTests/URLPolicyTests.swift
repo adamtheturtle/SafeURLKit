@@ -246,7 +246,7 @@ struct URLPolicyTests {
 
     // MARK: Length
 
-    @Test("The length limit is applied to the string as written")
+    @Test("The length limit is applied to the string's UTF-8 representation")
     func lengthLimit() throws {
         let long = "https://example.com/" + String(repeating: "a", count: 3000)
         #expect(throws: URLValidationError.self) {
@@ -255,6 +255,18 @@ struct URLPolicyTests {
         var policy = URLPolicy.publicHTTPS
         policy.maximumLength = nil
         #expect(policy.allows(long))
+    }
+
+    @Test("Combining scalars cannot bypass the UTF-8 byte limit")
+    func combiningScalarsRespectLengthLimit() throws {
+        let url = "https://example.com/" + "e" + String(repeating: "\u{0301}", count: 100)
+        let policy = URLPolicy(maximumLength: 64)
+
+        #expect(url.count == 21)
+        #expect(url.utf8.count > 64)
+        #expect(throws: URLValidationError.tooLong(length: url.utf8.count, limit: 64)) {
+            try policy.validate(url)
+        }
     }
 
     // MARK: URL overload
