@@ -19,6 +19,18 @@ import Testing
 
 @Suite("Redirect revalidation")
 struct RedirectDelegateTests {
+    @Test("The redirect delegate is a final, immutable Sendable policy holder")
+    func finalImmutableSendableSurface() {
+        // `@unchecked Sendable` is only sound while every stored property stays an
+        // immutable Sendable `let` and the type remains `final` (no subclass state).
+        let policy = URLPolicy.publicHTTPS
+        let delegate = PolicyEnforcingRedirectDelegate(policy: policy)
+        #expect(delegate.policy == policy)
+        #expect(delegate.onRejection == nil)
+        #expect(!delegate.sensitiveHeaderFields.isEmpty)
+        #expect(delegate.rejectedRedirectBehavior == .returnResponse)
+    }
+
     /// Ask a delegate what it would do with a redirect to `urlString`, returning the
     /// request it allowed through, or `nil` for a refusal.
     private func decision(
