@@ -35,6 +35,8 @@ struct URLPolicyTests {
         #expect(policy.allows("https://coderpad.io/a/./b/../c/"))
         #expect(!policy.allows("https://coderpad.io/a/b/c/"))
         #expect(URLPolicy.normalizedPathSegmentCount("/a/./b/../c") == 2)
+    }
+
     @Test("maximumPathSegments 0 traps at configuration time")
     func maximumPathSegmentsZero() async {
         await #expect(processExitsWith: .failure) {
