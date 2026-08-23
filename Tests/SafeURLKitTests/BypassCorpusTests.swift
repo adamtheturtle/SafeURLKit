@@ -263,16 +263,20 @@ struct BypassCorpusTests {
         #expect(!policy.allows("https://other.coderpad.io/"))
     }
 
-    @Test("An origin rule can be written as a URL string, and fails closed if unparseable")
+    @Test("An origin rule can be written as a URL string, and throws if unparseable")
     func originFromString() throws {
-        let rule = try #require(OriginRule.origin(matching: "https://coderpad.io:8443"))
+        let rule = try OriginRule.origin(matching: "https://coderpad.io:8443")
         #expect(rule == .origin(scheme: "https", host: .domain("coderpad.io"), port: 8443))
-        #expect(OriginRule.origin(matching: "not a url") == nil)
-        #expect(OriginRule.origin(matching: "") == nil)
+        #expect(throws: URLValidationError.self) {
+            try OriginRule.origin(matching: "not a url")
+        }
+        #expect(throws: URLValidationError.self) {
+            try OriginRule.origin(matching: "")
+        }
 
         // A default-port origin string produces a rule with no explicit port, which then
         // matches both spellings of that origin.
-        let implicit = try #require(OriginRule.origin(matching: "https://coderpad.io"))
+        let implicit = try OriginRule.origin(matching: "https://coderpad.io")
         let policy = URLPolicy(allowedOrigins: [implicit])
         #expect(policy.allows("https://coderpad.io/"))
         #expect(policy.allows("https://coderpad.io:443/"))
