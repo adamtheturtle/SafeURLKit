@@ -283,18 +283,22 @@ extension URLPolicy {
 
         // Last, because it is the only check that depends on Foundation agreeing with us
         // and it is the most useful failure to report against a URL that is otherwise fine.
-        let url = try crossCheckedURL(urlString, host: host, port: parsed.port)
+        let url = try crossCheckedURL(urlString, scheme: parsed.scheme, host: host, port: parsed.port)
 
         return ValidatedURL(url: url, scheme: parsed.scheme, host: host, port: port)
     }
 
-    /// Validate a `URL` against this policy, by validating its `absoluteString`.
+    /// Validate a `URL` against this policy.
     ///
-    /// - Parameter url: The URL to check. Relative URLs are rejected as malformed.
+    /// - Parameter url: The URL to check. Relative URLs and other authority-less values are
+    ///   rejected as malformed before any string normalization can hide that fact.
     /// - Returns: A ``ValidatedURL``.
     /// - Throws: A ``URLValidationError`` naming the first check that failed.
     public func validate(_ url: URL) throws(URLValidationError) -> ValidatedURL {
-        try validate(url.absoluteString)
+        guard url.scheme != nil, url.host != nil else {
+            throw .malformedURL(reason: "relative URLs cannot be validated")
+        }
+        return try validate(url.absoluteString)
     }
 
     /// Whether `urlString` satisfies this policy, discarding the reason it does not.
@@ -366,15 +370,20 @@ extension URLPolicy {
     /// destination is not.
     private func crossCheckedURL(
         _ urlString: String,
+        scheme: String,
         host: URLHost,
         port: Int?
     ) throws(URLValidationError) -> URL {
         guard
             let url = URL(string: urlString),
-            let components = URLComponents(string: urlString)
+            var components = URLComponents(string: urlString)
         else {
             throw .malformedURL(reason: "Foundation cannot parse the URL")
         }
+
+        // Foundation may preserve scheme casing from the input; normalize so
+        // ``ValidatedURL/scheme`` and ``ValidatedURL/url`` agree.
+        components.scheme = scheme
 
         guard let foundationHost = components.percentEncodedHost, !foundationHost.isEmpty else {
             throw .parserDisagreement(safeURLKit: host.description, foundation: "none")
@@ -415,6 +424,6 @@ extension URLPolicy {
             )
         }
 
-        return url
+        return components.url ?? url
     }
 }

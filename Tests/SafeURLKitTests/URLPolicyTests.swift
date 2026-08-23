@@ -284,6 +284,22 @@ struct URLPolicyTests {
         #expect(!URLPolicy.publicHTTPS.allows(bad))
     }
 
+    @Test("Relative URLs are rejected explicitly by validate(URL)")
+    func relativeURLRejected() throws {
+        let relative = try #require(URL(string: "/path"))
+        #expect(relative.host == nil)
+        #expect(throws: URLValidationError.self) {
+            try URLPolicy.publicHTTPS.validate(relative)
+        }
+    }
+
+    @Test("ValidatedURL.scheme matches the scheme casing of ValidatedURL.url")
+    func schemeCasingMatchesURL() throws {
+        let validated = try URLPolicy.publicHTTPS.validate("HTTPS://coderpad.io/")
+        #expect(validated.scheme == "https")
+        #expect(validated.url.scheme?.lowercased() == "https")
+    }
+
     // MARK: Errors
 
     @Test("Rejections describe both what was blocked and what it resolved to")
