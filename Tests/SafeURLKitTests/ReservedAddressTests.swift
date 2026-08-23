@@ -213,6 +213,14 @@ struct ReservedIPv6RangeTests {
 
 @Suite("Reserved domain names")
 struct ReservedDomainTests {
+    @Test("The IANA registry last-checked date is exposed and well-formed")
+    func registryLastChecked() {
+        let date = SpecialUseDomains.registryLastChecked
+        #expect(date == "2026-05-22")
+        #expect(date.utf8.count == 10)
+        #expect(date.split(separator: "-").count == 3)
+    }
+
     @Test(
         "Every current IANA special-use domain is covered",
         arguments: [

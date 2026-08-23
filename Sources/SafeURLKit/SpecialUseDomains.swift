@@ -9,10 +9,10 @@
 //  them, and they resolve to exactly the destinations an SSRF check exists to keep a
 //  request away from.
 //
-//  Source: IANA Special-Use Domain Names registry, last checked 2026-05-22, plus
+//  Source: IANA Special-Use Domain Names registry (see ``registryLastChecked``), plus
 //  conservative vendor-conventional suffixes such as `.internal` used by cloud metadata
-//  services. To refresh this table, compare IANA's CSV registry, strip its trailing root
-//  dots, update the registry fixture in ReservedAddressTests, and update this date.
+//  services. To refresh: compare IANA's CSV registry, strip trailing root dots, update
+//  ``suffixes``, update the fixture in ReservedAddressTests, and bump ``registryLastChecked``.
 //  https://www.iana.org/assignments/special-use-domain-names/special-use-domain-names.csv
 //
 
@@ -20,6 +20,14 @@ import Foundation
 
 /// Domain suffixes that are reserved, locally resolved, or otherwise never public.
 public enum SpecialUseDomains {
+    /// The calendar date on which ``suffixes`` was last checked against the IANA
+    /// Special-Use Domain Names registry, as `yyyy-MM-dd` (UTC).
+    ///
+    /// Bump this whenever the table is refreshed. There is no automatic fetch at runtime —
+    /// stale registries are a release-engineering concern — but exposing the date makes
+    /// drift visible to callers and to the suite that pins it.
+    public static let registryLastChecked = "2026-05-22"
+
     /// The reserved suffixes.
     ///
     /// Each entry matches the name itself and any subdomain of it, anchored at a label
