@@ -73,8 +73,6 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
     /// The host contained non-ASCII code points after percent-decoding. See
     /// ``URLHost`` parsing notes: SafeURLKit deliberately does not implement IDNA.
     case nonASCII(String)
-    /// The host contained a bidi override or format character that can mask its true spelling.
-    case confusableCharacter(Character)
     /// A host that began with `[` did not end with `]`.
     case unclosedIPv6Bracket
     /// A domain label was empty, as in `a..b` or a leading dot.
@@ -109,11 +107,6 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
             """
             the host \(host.debugDescription) contains non-ASCII code points, which \
             SafeURLKit does not transcode; supply an already punycoded host
-            """
-        case let .confusableCharacter(character):
-            """
-            the host contains the confusable code point \(character.debugDescription), which \
-            can mask the host's true spelling
             """
         case .unclosedIPv6Bracket:
             "the host opens an IPv6 literal with `[` but does not close it"
