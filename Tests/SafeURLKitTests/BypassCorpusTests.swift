@@ -266,16 +266,18 @@ struct BypassCorpusTests {
 
     @Test("The port rule and the origin list are separate checks, and both must pass")
     func portRuleAndOriginListCombine() throws {
-        // Pinning the footgun: an origin rule naming a non-default port is not enough on
-        // its own, because the port rule is checked first and rejects before the origin
-        // list is ever consulted.
+        // An origin on a non-default port needs a port rule that admits it. Init traps when
+        // the two are incompatible; when they agree, both checks still run independently.
         let origins: [OriginRule] = [
             .origin(scheme: "https", host: .domain("coderpad.io"), port: 8443)
         ]
-        #expect(!URLPolicy(allowedOrigins: origins).allows("https://coderpad.io:8443/"))
         #expect(
             URLPolicy(allowedOrigins: origins, portRule: .allowed([8443]))
                 .allows("https://coderpad.io:8443/")
+        )
+        #expect(
+            !URLPolicy(allowedOrigins: origins, portRule: .allowed([8443, 9443]))
+                .allows("https://coderpad.io:9443/")
         )
     }
 

@@ -84,6 +84,9 @@ public struct URLPolicy: Sendable, Hashable {
     ///
     ///   They are kept separate rather than inferred so that a policy states its port
     ///   surface in one place, instead of it being an emergent property of the origin list.
+    ///   ``URLPolicy/init`` traps when an exact-origin rule's effective port is incompatible
+    ///   with `portRule`, so a deny-all misconfiguration fails at setup rather than at every
+    ///   request.
     public var portRule: PortRule
 
     /// Whether the URL may embed a username or password. Defaults to `false`.
@@ -166,6 +169,7 @@ public struct URLPolicy: Sendable, Hashable {
                 """
             )
         }
+        Self.checkPortRuleCompatible(with: allowedOrigins, portRule: portRule)
         normalizedAllowedSchemes = Set(allowedSchemes.map(\.lowercasedASCII))
         self.allowedOrigins = allowedOrigins
         self.portRule = portRule
@@ -178,6 +182,56 @@ public struct URLPolicy: Sendable, Hashable {
         self.permittedSpecialPurposeAddressNames = permittedSpecialPurposeAddressNames
         self.maximumLength = maximumLength
         self.maximumPathSegments = maximumPathSegments
+    }
+
+    /// Trap when an exact-origin rule names a port that ``portRule`` can never admit.
+    ///
+    /// ``portRule`` and ``allowedOrigins`` are separate checks and both must pass. An
+    /// ``OriginRule/origin(scheme:host:port:)`` on port 8443 under ``PortRule/defaultForScheme``
+    /// therefore rejects every URL — catch that at configuration time rather than as a
+    /// silent deny-all in production.
+    private static func checkPortRuleCompatible(
+        with origins: [OriginRule]?,
+        portRule: PortRule
+    ) {
+        guard let origins else { return }
+        for rule in origins {
+            guard case let .origin(scheme, _, port) = rule else { continue }
+            let effective = port ?? defaultPort(forScheme: scheme)
+            guard let effective else {
+                preconditionFailure(
+                    """
+                    OriginRule.origin(scheme: \(scheme.debugDescription), …) names a scheme \
+                    with no default port and no explicit port, so it can never match under \
+                    any PortRule; give the origin an explicit port
+                    """
+                )
+            }
+            switch portRule {
+            case .any:
+                break
+            case .defaultForScheme:
+                guard effective == defaultPort(forScheme: scheme) else {
+                    preconditionFailure(
+                        """
+                        OriginRule.origin(… port: \(effective)) can never match under \
+                        portRule: .defaultForScheme; use portRule: .allowed([\(effective)]) \
+                        or .any (see URLPolicy.portRule)
+                        """
+                    )
+                }
+            case let .allowed(ports):
+                guard ports.contains(effective) else {
+                    preconditionFailure(
+                        """
+                        OriginRule.origin(… port: \(effective)) can never match under \
+                        portRule: .allowed(\(ports.sorted())); include \(effective) in the \
+                        allowed set (see URLPolicy.portRule)
+                        """
+                    )
+                }
+            }
+        }
     }
 }
 
