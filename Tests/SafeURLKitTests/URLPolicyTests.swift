@@ -211,6 +211,17 @@ struct URLPolicyTests {
         #expect(URLPolicy.defaultPort(forScheme: "myapp") == nil)
     }
 
+    @Test("defaultPort knows ftp even though the default policy disallows it")
+    func defaultPortIndependentOfAllowedSchemes() throws {
+        // Presence in the default-port table is not scheme permission.
+        #expect(!URLPolicy.publicHTTPS.allows("ftp://coderpad.io/"))
+        #expect(URLPolicy.defaultPort(forScheme: "ftp") == 21)
+
+        let ftp = URLPolicy(allowedSchemes: ["ftp"])
+        #expect(try ftp.validate("ftp://coderpad.io/").port == 21)
+        #expect(try ftp.validate("ftp://coderpad.io:21/").port == 21)
+    }
+
     // MARK: Hosts
 
     @Test("IP-literal hosts are rejected by default, however they are spelled")
