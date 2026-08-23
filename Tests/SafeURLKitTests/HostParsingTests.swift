@@ -111,13 +111,22 @@ struct HostParsingTests {
         #expect(!error.description.contains("allow-list"))
     }
 
-    @Test(
-        "Empty labels and empty hosts are rejected",
+    @Test("Empty labels and empty hosts are rejected",
         arguments: ["", ".", "..", "a..b", ".example.com", "example..com", "example.com.."]
     )
     func emptyLabels(_ input: String) {
         #expect(throws: HostParsingError.self) {
             try URLHost.parse(input)
+        }
+    }
+
+    @Test("Underscores in hostnames are rejected")
+    func underscoresRejected() {
+        for input in ["foo_bar.example.com", "_service.example.com", "example_com", "a.b_c.d"] {
+            #expect(throws: HostParsingError.self) {
+                try URLHost.parse(input)
+            }
+            #expect(!URLPolicy.publicHTTPS.allows("https://\(input)/"))
         }
     }
 

@@ -73,6 +73,8 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
     case unclosedIPv6Bracket
     /// A domain label was empty, as in `a..b` or a leading dot.
     case emptyLabel
+    /// A domain label contained `_`, which is not valid in a hostname (LDH rule).
+    case underscoreInLabel(String)
     /// A DNS label exceeded the protocol maximum of 63 octets.
     case labelTooLong(length: Int)
     /// A DNS name exceeded the protocol maximum wire length of 255 octets.
@@ -99,6 +101,8 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
             "the host opens an IPv6 literal with `[` but does not close it"
         case .emptyLabel:
             "the host contains an empty label"
+        case let .underscoreInLabel(label):
+            "the host label \(label.debugDescription) contains an underscore"
         case let .labelTooLong(length):
             "the host contains a \(length)-octet label, over the 63-octet DNS limit"
         case let .domainTooLong(length):
@@ -198,6 +202,13 @@ extension URLHost {
 
         if IPv4Address.endsInANumber(domain) {
             return .ipv4(try IPv4Address.parse(domain))
+        }
+
+        // Hostnames follow the LDH rule (letters, digits, hyphen). Underscores appear in
+        // DNS SRV owner names but not in hostnames a URL should fetch; accepting them lets
+        // unusual spellings through a policy that meant to name ordinary domains.
+        if let underscored = labels.first(where: { $0.contains("_") }) {
+            throw .underscoreInLabel(String(underscored))
         }
 
         if let oversized = labels.first(where: { $0.utf8.count > 63 }) {
