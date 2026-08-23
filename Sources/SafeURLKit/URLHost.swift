@@ -201,6 +201,10 @@ extension URLHost {
             throw .confusableCharacter(Character(confusable))
         }
 
+        if let forbidden = decoded.unicodeScalars.first(where: Self.isForbidden) {
+            throw .forbiddenCodePoint(Character(forbidden))
+        }
+
         guard decoded.unicodeScalars.allSatisfy(\.isASCII) else {
             throw .nonASCII(decoded)
         }
