@@ -35,6 +35,11 @@ public enum OriginRule: Sendable, Hashable, CustomStringConvertible {
     /// `"." + suffix`. So `.hostSuffix("coderpad.io")` matches `coderpad.io` and
     /// `app.coderpad.io`, and does not match `evilcoderpad.io`.
     ///
+    /// The suffix must itself contain at least one `.` (two or more labels). A single-label
+    /// suffix such as `"com"` would match every `.com` domain and is therefore ignored —
+    /// it never matches — so an overly broad rule fails closed rather than opening the
+    /// entire TLD.
+    ///
     /// Only domain names can match a suffix rule. An IP literal never does, whatever it
     /// looks like.
     case hostSuffix(String)
@@ -91,6 +96,10 @@ extension OriginRule {
                 return false
             }
             let normalized = suffix.lowercasedASCII
+            // Single-label suffixes (e.g. "com") would match every name under that TLD.
+            guard normalized.contains(".") else {
+                return false
+            }
             return name == normalized || name.hasSuffix(".\(normalized)")
         }
     }
