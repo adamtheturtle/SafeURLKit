@@ -79,9 +79,14 @@ struct BypassCorpusTests {
     }
 
     @Test("A single-label hostSuffix never matches, so hostSuffix(com) cannot open every .com")
-    func singleLabelSuffixFailsClosed() {
+    func singleLabelSuffixFailsClosed() throws {
         let policy = URLPolicy(allowedOrigins: [.hostSuffix("com")])
-        #expect(!policy.allows("https://example.com/"))
+        // Use an ordinary public .com host — not example.com, which SpecialUseDomains
+        // rejects before hostSuffix matching runs.
+        #expect(
+            policy.rejection(for: "https://github.com/")
+                == .originNotAllowed(origin: "https://github.com:443")
+        )
         #expect(!policy.allows("https://com/"))
         #expect(!policy.allows("https://coderpad.io/"))
     }
