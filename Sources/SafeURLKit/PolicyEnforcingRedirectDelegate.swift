@@ -78,7 +78,8 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         onRejection: (@Sendable (URL, URLValidationError) -> Void)? = nil,
         sensitiveHeaderFields: Set<String> = [
             "authorization", "proxy-authorization", "cookie", "cookie2", "api-key",
-            "x-api-key", "x-auth-token"
+            "x-api-key", "x-auth-token", "x-access-token", "access-token",
+            "x-csrf-token", "csrf-token", "x-session-token", "session-token"
         ],
         rejectedRedirectBehavior: RejectedRedirectBehavior = .returnResponse
     ) {

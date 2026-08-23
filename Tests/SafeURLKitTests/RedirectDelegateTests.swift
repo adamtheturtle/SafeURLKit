@@ -152,11 +152,21 @@ struct RedirectDelegateTests {
         let request = try decision(
             delegate,
             redirectingTo: "https://github.com/",
-            headers: ["Authorization": "Bearer secret", "API-Key": "secret", "Accept": "text/plain"]
+            headers: [
+                "Authorization": "Bearer secret",
+                "API-Key": "secret",
+                "X-Access-Token": "secret",
+                "X-CSRF-Token": "secret",
+                "Session-Token": "secret",
+                "Accept": "text/plain"
+            ]
         )
 
         #expect(request?.value(forHTTPHeaderField: "Authorization") == nil)
         #expect(request?.value(forHTTPHeaderField: "API-Key") == nil)
+        #expect(request?.value(forHTTPHeaderField: "X-Access-Token") == nil)
+        #expect(request?.value(forHTTPHeaderField: "X-CSRF-Token") == nil)
+        #expect(request?.value(forHTTPHeaderField: "Session-Token") == nil)
         #expect(request?.value(forHTTPHeaderField: "Accept") == "text/plain")
     }
 
