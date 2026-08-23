@@ -330,6 +330,22 @@ struct URLPolicyTests {
         #expect(!URLPolicy.publicHTTPS.allows(bad))
     }
 
+    @Test("validate(URL) applies the policy to Foundation's absoluteString")
+    func urlOverloadUsesAbsoluteString() throws {
+        // Callers that build a URL from text lose the original spelling: Foundation may
+        // normalize before SafeURLKit sees the value. The String overload is the one that
+        // checks what was written.
+        let mixed = try #require(URL(string: "HTTPS://CoderPad.IO/a"))
+        let validated = try URLPolicy.publicHTTPS.validate(mixed)
+        #expect(validated.scheme == "https")
+        #expect(validated.host == .domain("coderpad.io"))
+        #expect(validated.url.absoluteString == mixed.absoluteString)
+
+        // Prefer the String path when the as-written form matters.
+        let fromString = try URLPolicy.publicHTTPS.validate("HTTPS://CoderPad.IO/a")
+        #expect(fromString.url.absoluteString == "HTTPS://CoderPad.IO/a")
+    }
+
     // MARK: Errors
 
     @Test("Rejections describe both what was blocked and what it resolved to")

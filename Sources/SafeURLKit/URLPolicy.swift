@@ -334,9 +334,17 @@ extension URLPolicy {
 
     /// Validate a `URL` against this policy.
     ///
+    /// This overload validates Foundation's ``URL/absoluteString``, not whatever text the
+    /// caller used to construct `url`. Foundation may have already lowercased the scheme,
+    /// decoded or re-encoded percent-escapes, dropped a default port, or otherwise
+    /// normalized the value — so the string that is checked can differ from the original
+    /// input. Prefer ``validate(_:)-(String)`` when the URL arrives as text and the
+    /// as-written form must be what the policy sees.
+    ///
     /// - Parameter url: The URL to check. Relative URLs and other authority-less values are
     ///   rejected as malformed before any string normalization can hide that fact.
-    /// - Returns: A ``ValidatedURL``.
+    /// - Returns: A ``ValidatedURL`` whose ``ValidatedURL/url`` is derived from that
+    ///   `absoluteString` path (see ``validate(_:)-(String)``).
     /// - Throws: A ``URLValidationError`` naming the first check that failed.
     public func validate(_ url: URL) throws(URLValidationError) -> ValidatedURL {
         guard url.scheme != nil, url.host != nil else {
