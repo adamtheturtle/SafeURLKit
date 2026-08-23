@@ -100,6 +100,10 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
             onRejection?(url, error)
             completionHandler(nil)
         } catch {
+            onRejection?(
+                url,
+                .malformedURL(reason: "unexpected redirect validation failure: \(error)")
+            )
             completionHandler(nil)
         }
     }
@@ -112,14 +116,17 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
             throw .malformedURL(reason: "the redirect response has no Location header")
         }
 
-        if Self.isAbsolute(location) {
-            return try policy.validate(location)
-        }
-
+        // Absolute and relative Location values both get the ambiguous-character pre-scan:
+        // otherwise an absolute Location could carry a backslash or control that relative
+        // ones would have refused, creating an asymmetric bypass.
         if let scalar = location.unicodeScalars.first(where: Self.isAmbiguousInLocation) {
             throw .malformedURL(
                 reason: "the raw Location header contains ambiguous character \(Character(scalar).debugDescription)"
             )
+        }
+
+        if Self.isAbsolute(location) {
+            return try policy.validate(location)
         }
 
         guard
