@@ -169,9 +169,18 @@ extension URLPolicy {
 
     /// HTTPS-only to the given origins, otherwise as strict as ``publicHTTPS``.
     ///
-    /// - Parameter origins: The acceptable origins. An empty array rejects everything.
+    /// - Parameter origins: The acceptable origins. Must not be empty; use `nil`
+    ///   ``allowedOrigins`` on ``URLPolicy/init`` when no host restriction is intended.
     public static func https(origins: [OriginRule]) -> URLPolicy {
-        URLPolicy(allowedOrigins: origins)
+        guard !origins.isEmpty else {
+            preconditionFailure(
+                """
+                URLPolicy.https(origins:) requires at least one origin. Pass allowedOrigins: nil \
+                on URLPolicy.init for no host restriction, or allowedOrigins: [] to reject every host.
+                """
+            )
+        }
+        return URLPolicy(allowedOrigins: origins)
     }
 }
 
