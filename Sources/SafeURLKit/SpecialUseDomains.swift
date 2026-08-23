@@ -43,6 +43,12 @@ public enum SpecialUseDomains {
     ///   `metadata.google.internal` are exactly the SSRF targets this list exists to catch.
     ///   Opt in with ``URLPolicy/allowsSpecialUseHostNames`` or an explicit
     ///   ``URLPolicy/allowedOrigins`` entry when a specific `.internal` name must be fetched.
+    /// `.alt` is an IANA special-use TLD (RFC 9476) reserved for alternative naming systems.
+    /// It is blocked entirely under the default policy, which can produce false positives in
+    /// development setups that invent `*.alt` names. That is intentional: `.alt` never
+    /// denotes a public Internet host. Allow it explicitly with
+    /// ``URLPolicy/allowsSpecialUseHostNames`` or ``URLPolicy/allowedOrigins`` when a test
+    /// harness needs those names.
     public static let suffixes: [String] = [
         "localhost",
         "local",
