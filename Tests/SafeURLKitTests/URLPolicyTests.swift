@@ -158,6 +158,10 @@ struct URLPolicyTests {
         #expect(!policy.allows("https://coderpad.io:65536/"))
         #expect(!policy.allows("https://coderpad.io:-1/"))
         #expect(!policy.allows("https://coderpad.io:80x/"))
+        // Port 0 is reserved and never a usable destination.
+        #expect(throws: URLValidationError.disallowedPort(0)) {
+            try policy.validate("https://coderpad.io:0/")
+        }
         // An empty port means the scheme's default.
         #expect(try policy.validate("https://coderpad.io:/").port == 443)
     }

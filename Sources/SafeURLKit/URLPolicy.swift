@@ -252,6 +252,12 @@ extension URLPolicy {
             )
         }
 
+        // Port 0 is reserved and never a usable destination; reject it under every port
+        // rule so `.any` cannot accidentally admit it.
+        if port == 0 {
+            throw .disallowedPort(0)
+        }
+
         switch portRule {
         case .defaultForScheme:
             guard port == Self.defaultPort(forScheme: parsed.scheme) else {
