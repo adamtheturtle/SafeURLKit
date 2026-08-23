@@ -160,6 +160,9 @@ struct HostParsingTests {
         }
         #expect(throws: HostParsingError.invalidPercentEncoding) {
             try URLHost.parse("example%.com")
+        }
+    }
+
     @Test("Percent-encoded controls are rejected as forbidden code points")
     func percentEncodedControls() {
         for input in ["exam%01ple.com", "exam%7fple.com", "%08.example.com"] {

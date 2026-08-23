@@ -199,6 +199,8 @@ extension URLHost {
 
         if let confusable = decoded.unicodeScalars.first(where: isConfusable) {
             throw .confusableCharacter(Character(confusable))
+        }
+
         if let forbidden = decoded.unicodeScalars.first(where: Self.isForbidden) {
             throw .forbiddenCodePoint(Character(forbidden))
         }
