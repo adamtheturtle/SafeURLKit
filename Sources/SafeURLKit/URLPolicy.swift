@@ -453,7 +453,7 @@ extension URLPolicy {
         components.scheme = scheme
 
         guard let foundationHost = components.percentEncodedHost, !foundationHost.isEmpty else {
-            throw .parserDisagreement(safeURLKit: host.description, foundation: "none")
+            throw .parserDisagreement(field: "host", safeURLKit: host.description, foundation: "none")
         }
 
         // Foundation drops the brackets from IPv6 literals in some versions and keeps them
@@ -466,6 +466,7 @@ extension URLPolicy {
         if let parsedFoundationHost = try? URLHost.parse(bracketed) {
             guard parsedFoundationHost == host else {
                 throw .parserDisagreement(
+                    field: "host",
                     safeURLKit: host.description,
                     foundation: parsedFoundationHost.description
                 )
@@ -481,11 +482,16 @@ extension URLPolicy {
                 let ourRendering = URLComponents(string: "https://\(host)/")?.percentEncodedHost,
                 ourRendering == foundationHost
             else {
-                throw .parserDisagreement(safeURLKit: host.description, foundation: foundationHost)
+                throw .parserDisagreement(
+                    field: "host",
+                    safeURLKit: host.description,
+                    foundation: foundationHost
+                )
             }
         }
         guard components.port == port else {
             throw .parserDisagreement(
+                field: "port",
                 safeURLKit: port.map(String.init) ?? "default",
                 foundation: components.port.map(String.init) ?? "default"
             )

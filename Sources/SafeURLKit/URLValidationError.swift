@@ -23,7 +23,7 @@ public enum URLValidationError: Error, Sendable, Hashable, CustomStringConvertib
     /// "right", the request would be issued by Foundation while the check was made against
     /// something else, so the check would be worthless. See ``URLPolicy`` for the
     /// reasoning.
-    case parserDisagreement(safeURLKit: String, foundation: String)
+    case parserDisagreement(field: String, safeURLKit: String, foundation: String)
 
     /// The URL string has more UTF-8 bytes than the policy's ``URLPolicy/maximumLength``.
     case tooLong(length: Int, limit: Int)
@@ -66,10 +66,10 @@ public enum URLValidationError: Error, Sendable, Hashable, CustomStringConvertib
         switch self {
         case let .malformedURL(reason):
             "malformed URL: \(reason)"
-        case let .parserDisagreement(safeURLKit, foundation):
+        case let .parserDisagreement(field, safeURLKit, foundation):
             """
-            URL parsers disagree: SafeURLKit reads the host as \(safeURLKit.debugDescription) \
-            and Foundation reads it as \(foundation.debugDescription)
+            URL parsers disagree on the \(field): SafeURLKit reads it as \
+            \(safeURLKit.debugDescription) and Foundation reads it as \(foundation.debugDescription)
             """
         case let .tooLong(length, limit):
             "the URL is \(length) UTF-8 bytes, over the \(limit)-byte limit"
