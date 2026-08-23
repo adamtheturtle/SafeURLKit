@@ -226,11 +226,16 @@ extension URLPolicy {
         if !allowsCredentials, parsed.userinfo != nil {
             throw .credentialsPresent
         }
-        if !allowsFragment, parsed.fragment != nil {
-            throw .fragmentPresent
+        if !allowsQuery {
+            if parsed.query != nil {
+                throw .queryPresent
+            }
+            if let fragment = parsed.fragment, fragment.contains("?") {
+                throw .queryPresent
+            }
         }
-        if !allowsQuery, parsed.query != nil {
-            throw .queryPresent
+        if !allowsFragment, let fragment = parsed.fragment, !fragment.isEmpty {
+            throw .fragmentPresent
         }
 
         let host: URLHost

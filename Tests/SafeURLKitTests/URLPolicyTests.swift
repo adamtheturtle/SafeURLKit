@@ -108,10 +108,8 @@ struct URLPolicyTests {
         #expect(throws: URLValidationError.fragmentPresent) {
             try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#frag")
         }
-        // An empty fragment is still a fragment.
-        #expect(throws: URLValidationError.fragmentPresent) {
-            try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#")
-        }
+        // A bare trailing `#` carries no fragment payload and is allowed.
+        #expect(URLPolicy.publicHTTPS.allows("https://coderpad.io/a#"))
         let permissive = URLPolicy(allowsFragment: true)
         #expect(permissive.allows("https://coderpad.io/a#frag"))
     }
@@ -122,6 +120,9 @@ struct URLPolicyTests {
         let thumbnailOnly = URLPolicy(allowsQuery: false)
         #expect(throws: URLValidationError.queryPresent) {
             try thumbnailOnly.validate("https://coderpad.io/a?b=c")
+        }
+        #expect(throws: URLValidationError.queryPresent) {
+            try thumbnailOnly.validate("https://coderpad.io/a#notaquery?b=c")
         }
         #expect(thumbnailOnly.allows("https://coderpad.io/a"))
     }
