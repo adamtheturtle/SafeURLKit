@@ -17,6 +17,30 @@ struct URLPolicyTests {
         let policy = URLPolicy(allowedOrigins: [.hostSuffix("example.com")])
         #expect(policy.allows("https://www.example.com/"))
         #expect(policy.allows("https://example.com/"))
+
+    @Test("Incompatible origin port and portRule trap at configuration time")
+    func incompatibleOriginPortTraps() async {
+        await #expect(processExitsWith: .failure) {
+            _ = URLPolicy(
+                allowedOrigins: [
+                    .origin(scheme: "https", host: .domain("coderpad.io"), port: 8443)
+                ]
+            )
+        }
+        await #expect(processExitsWith: .failure) {
+            _ = URLPolicy(
+                allowedOrigins: [
+                    .origin(scheme: "https", host: .domain("coderpad.io"), port: 8443)
+                ],
+                portRule: .allowed([443])
+            )
+        }
+        // Compatible configurations still construct.
+        let origins: [OriginRule] = [
+            .origin(scheme: "https", host: .domain("coderpad.io"), port: 8443)
+        ]
+        _ = URLPolicy(allowedOrigins: origins, portRule: .allowed([8443]))
+        _ = URLPolicy(allowedOrigins: origins, portRule: .any)
     }
 
     @Test("Post-DNS validation rejects reserved addresses from public hostnames")
