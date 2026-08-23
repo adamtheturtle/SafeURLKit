@@ -270,7 +270,7 @@ extension URLPolicy {
 
         // Last, because it is the only check that depends on Foundation agreeing with us
         // and it is the most useful failure to report against a URL that is otherwise fine.
-        let url = try crossCheckedURL(urlString, scheme: parsed.scheme, host: host, port: parsed.port)
+        let url = try crossCheckedURL(urlString, host: host, port: parsed.port)
 
         return ValidatedURL(url: url, scheme: parsed.scheme, host: host, port: port)
     }
@@ -433,20 +433,20 @@ extension URLPolicy {
     /// destination is not.
     private func crossCheckedURL(
         _ urlString: String,
-        scheme: String,
         host: URLHost,
         port: Int?
     ) throws(URLValidationError) -> URL {
         guard
             let url = URL(string: urlString),
-            var components = URLComponents(string: urlString)
+            let components = URLComponents(string: urlString)
         else {
             throw .malformedURL(reason: "Foundation cannot parse the URL")
         }
 
-        // Foundation may preserve scheme casing from the input; normalize so
-        // ``ValidatedURL/scheme`` and ``ValidatedURL/url`` agree.
-        components.scheme = scheme
+        // Do not assign `components.scheme` (or otherwise rebuild from parts): that
+        // invalidates Foundation's parse cache and can rewrite percent-encoding, so the
+        // returned `URL` would no longer match `URL(string:)` / redirect `newRequest`s.
+        // ``ValidatedURL/scheme`` already carries the ASCII-lowercased scheme.
 
         guard let foundationHost = components.percentEncodedHost, !foundationHost.isEmpty else {
             throw .parserDisagreement(field: "host", safeURLKit: host.description, foundation: "none")
@@ -493,6 +493,6 @@ extension URLPolicy {
             )
         }
 
-        return components.url ?? url
+        return url
     }
 }
