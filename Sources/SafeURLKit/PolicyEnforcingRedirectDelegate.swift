@@ -64,7 +64,8 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         onRejection: (@Sendable (URL, URLValidationError) -> Void)? = nil,
         sensitiveHeaderFields: Set<String> = [
             "authorization", "proxy-authorization", "cookie", "cookie2", "api-key",
-            "x-api-key", "x-auth-token"
+            "x-api-key", "x-auth-token", "x-access-token", "access-token",
+            "x-csrf-token", "csrf-token", "x-session-token", "session-token"
         ]
     ) {
         self.policy = policy
@@ -172,8 +173,8 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         guard
             let leftScheme = lhs.scheme?.lowercasedASCII,
             let rightScheme = rhs.scheme?.lowercasedASCII,
-            let leftHost = lhs.host?.lowercasedASCII,
-            let rightHost = rhs.host?.lowercasedASCII
+            let leftHost = parseHost(lhs),
+            let rightHost = parseHost(rhs)
         else {
             return false
         }
@@ -181,5 +182,18 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         let leftPort = lhs.port ?? URLPolicy.defaultPort(forScheme: leftScheme)
         let rightPort = rhs.port ?? URLPolicy.defaultPort(forScheme: rightScheme)
         return leftScheme == rightScheme && leftHost == rightHost && leftPort == rightPort
+    }
+
+    /// Parse a `URL`'s host into a semantic ``URLHost``, so `127.0.0.1` and `2130706433`
+    /// compare equal and IPv6 bracket differences do not create a false cross-origin.
+    private static func parseHost(_ url: URL) -> URLHost? {
+        guard let host = url.host, !host.isEmpty else {
+            return nil
+        }
+        let bracketed =
+            host.contains(":") && !host.hasPrefix("[")
+                ? "[\(host)]"
+                : host
+        return try? URLHost.parse(bracketed)
     }
 }

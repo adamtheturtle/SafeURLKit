@@ -173,6 +173,71 @@ struct RedirectDelegateTests {
         #expect(request?.value(forHTTPHeaderField: "API-Key") == "secret")
     }
 
+    @Test("Implicit and explicit default ports are the same origin for header preservation")
+    func sameOriginExplicitDefaultPort() throws {
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
+        // Source is https://coderpad.io/ (implicit 443); target spells :443 explicitly.
+        let request = try decision(
+            delegate,
+            redirectingTo: "https://coderpad.io:443/next",
+            headers: [
+                "Authorization": "Bearer secret",
+                "X-Access-Token": "secret"
+            ]
+        )
+        #expect(request?.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
+        #expect(request?.value(forHTTPHeaderField: "X-Access-Token") == "secret")
+    }
+
+    @Test("Same-origin comparison is semantic for decimal IPv4 spellings")
+    func sameOriginSemanticIPv4() throws {
+        let policy = URLPolicy(
+            allowedSchemes: ["http"],
+            portRule: .any,
+            allowsIPLiteralHosts: true,
+            allowsSpecialPurposeAddresses: true
+        )
+        let delegate = PolicyEnforcingRedirectDelegate(policy: policy)
+
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.finishTasksAndInvalidate() }
+
+        let original = try #require(URL(string: "http://127.0.0.1:8080/"))
+        let target = try #require(URL(string: "http://2130706433:8080/next"))
+        let response = try #require(
+            HTTPURLResponse(
+                url: original,
+                statusCode: 302,
+                httpVersion: nil,
+                headerFields: ["Location": "http://2130706433:8080/next"]
+            )
+        )
+
+        var result: URLRequest?
+        var request = URLRequest(url: target)
+        request.setValue("Bearer secret", forHTTPHeaderField: "Authorization")
+        delegate.urlSession(
+            session,
+            task: session.dataTask(with: original),
+            willPerformHTTPRedirection: response,
+            newRequest: request
+        ) { result = $0 }
+
+        #expect(result?.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
+    }
+
+    @Test("Cross-origin redirects also strip X-Access-Token")
+    func stripsAccessToken() throws {
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
+        let request = try decision(
+            delegate,
+            redirectingTo: "https://github.com/",
+            headers: ["X-Access-Token": "secret", "Accept": "text/plain"]
+        )
+        #expect(request?.value(forHTTPHeaderField: "X-Access-Token") == nil)
+        #expect(request?.value(forHTTPHeaderField: "Accept") == "text/plain")
+    }
+
     @Test("The delegate exposes the policy it was built with")
     func exposesPolicy() {
         let policy = URLPolicy(allowedSchemes: ["http"])
