@@ -325,6 +325,29 @@ extension URLPolicy {
         (try? validate(url)) != nil
     }
 
+    /// The error `urlString` is rejected with, or `nil` if it passes.
+    ///
+    /// Prefer this over ``allows(_:)-(String)`` when logging or metrics need the reason a
+    /// URL failed.
+    public func rejection(for urlString: String) -> URLValidationError? {
+        do {
+            _ = try validate(urlString)
+            return nil
+        } catch {
+            return error
+        }
+    }
+
+    /// The error `url` is rejected with, or `nil` if it passes.
+    public func rejection(for url: URL) -> URLValidationError? {
+        do {
+            _ = try validate(url)
+            return nil
+        } catch {
+            return error
+        }
+    }
+
     /// Re-check an address obtained from DNS (or another resolver) against this policy's
     /// IP-literal and reserved-address rules.
     ///

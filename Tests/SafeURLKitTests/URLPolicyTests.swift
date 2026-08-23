@@ -323,6 +323,13 @@ struct URLPolicyTests {
         #expect(error.description.contains("loopback"))
     }
 
+    @Test("rejection(for:) exposes the reason allows() discards")
+    func rejectionAPI() throws {
+        let error = try #require(URLPolicy.publicHTTPS.rejection(for: "https://127.0.0.1/"))
+        #expect(error.description.contains("IP address literal") || error.description.contains("loopback"))
+        #expect(URLPolicy.publicHTTPS.rejection(for: "https://coderpad.io/") == nil)
+    }
+
     @Test("Resolved addresses can be re-checked after DNS lookup")
     func validateResolvedAddresses() throws {
         let policy = URLPolicy.publicHTTPS
@@ -348,19 +355,6 @@ struct URLPolicyTests {
         try literalsOK.validate(resolvedHost: .ipv4(IPv4Address(93, 184, 216, 34)))
         #expect(throws: URLValidationError.self) {
             try literalsOK.validate(resolvedAddress: IPv4Address(10, 0, 0, 1))
-        }
-    }
-}
-
-extension URLPolicy {
-    /// The error a URL is rejected with, or `nil` if it passes. Keeps the tests that care
-    /// about *why* something failed from re-writing the same do/catch each time.
-    func rejection(for urlString: String) -> URLValidationError? {
-        do {
-            _ = try validate(urlString)
-            return nil
-        } catch {
-            return error
         }
     }
 }
