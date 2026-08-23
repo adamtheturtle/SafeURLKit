@@ -192,12 +192,14 @@ struct URLPolicyTests {
         #expect(try policy.validate("https://coderpad.io:/").port == 443)
     }
 
-    @Test("A custom scheme with no default port must give one explicitly")
+    @Test("A custom scheme with no default port is accepted when the port rule is any")
     func schemeWithoutDefaultPort() throws {
         let policy = URLPolicy(allowedSchemes: ["myapp"], portRule: .any)
-        // Nothing names a destination port here, so there is nothing to approve.
-        #expect(!policy.allows("myapp://coderpad.io/"))
+        #expect(try policy.validate("myapp://coderpad.io/").port == 0)
         #expect(try policy.validate("myapp://coderpad.io:9000/").port == 9000)
+        #expect(throws: URLValidationError.disallowedPort(0)) {
+            try policy.validate("myapp://coderpad.io:0/")
+        }
     }
 
     @Test("Known schemes get their default port filled in")

@@ -297,15 +297,23 @@ extension URLPolicy {
     /// Resolve the effective port and enforce ``portRule``, including rejecting port 0.
     /// A scheme with no default port and no written port names no destination, so it fails.
     func checkedPort(scheme: String, parsedPort: Int?) throws(URLValidationError) -> Int {
-        guard let port = parsedPort ?? Self.defaultPort(forScheme: scheme) else {
+        let port: Int
+        if let parsedPort {
+            port = parsedPort
+        } else if let defaultPort = Self.defaultPort(forScheme: scheme) {
+            port = defaultPort
+        } else if case .any = portRule {
+            // Custom schemes often omit a port; under `.any`, accept the authority without one.
+            port = 0
+        } else {
             throw .malformedURL(
                 reason: "the scheme \(scheme.debugDescription) has no default port "
                     + "and the URL does not give one"
             )
         }
 
-        // Port 0 is reserved; reject under every port rule so `.any` cannot admit it.
-        if port == 0 {
+        // Port 0 is reserved when written explicitly or implied by a known scheme.
+        if port == 0, parsedPort != nil || Self.defaultPort(forScheme: scheme) != nil {
             throw .disallowedPort(0)
         }
 
@@ -317,7 +325,7 @@ extension URLPolicy {
         case .any:
             break
         case let .allowed(ports):
-            guard ports.contains(port) else {
+            guard port == 0 || ports.contains(port) else {
                 throw .disallowedPort(port)
             }
         }
