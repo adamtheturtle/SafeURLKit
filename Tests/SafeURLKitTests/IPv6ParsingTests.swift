@@ -126,21 +126,29 @@ struct EmbeddedIPv4Tests {
         #expect(address.embeddedIPv4Addresses.contains(expected))
     }
 
-    @Test("Teredo's obfuscated client field is not read as an embedded address")
-    func teredoClientIgnored() throws {
-        // It names the far endpoint rather than anything a caller would connect to, and
-        // de-obfuscating it on an address that merely starts with `2001:0:` yields a
-        // meaningless address that would then match a reserved range under the wrong name.
-        let address = try IPv6Address.parse("2001:0:1:2:3:4:5601:5601")
-        #expect(address.embeddedIPv4Addresses == [IPv4Address(0, 1, 0, 2)])
+    @Test("Teredo's obfuscated client field is decoded into the embedded address list")
+    func teredoClientDecoded() throws {
+        // Server 8.8.8.8 is public; client 5601:5601 XOR ffff:ffff = 169.254.169.254.
+        // Decoding the client field is what surfaces the metadata endpoint.
+        let address = try IPv6Address.parse("2001:0:808:808:3:4:5601:5601")
+        #expect(
+            address.embeddedIPv4Addresses
+                == [IPv4Address(8, 8, 8, 8), IPv4Address(169, 254, 169, 254)]
+        )
+        let match = try #require(SpecialPurposeAddresses.match(address))
+        #expect(match.name == "link-local / cloud metadata")
     }
 
-    @Test(
-        "An all-zero tunnel field is a placeholder, not the address 0.0.0.0",
-        arguments: ["2001:0::1", "2002::1"]
-    )
-    func zeroTunnelField(_ input: String) throws {
-        #expect(try IPv6Address.parse(input).embeddedIPv4Addresses.isEmpty)
+    @Test("An all-zero 6to4 field is a placeholder, not the address 0.0.0.0")
+    func zero6to4Field() throws {
+        #expect(try IPv6Address.parse("2002::1").embeddedIPv4Addresses.isEmpty)
+    }
+
+    @Test("A Teredo address with a zero server still decodes a non-zero client field")
+    func teredoZeroServerNonZeroClient() throws {
+        // 2001:0::1 has server 0.0.0.0 (ignored) and client raw 0.0.0.1 → XOR → 255.255.255.254.
+        let address = try IPv6Address.parse("2001:0::1")
+        #expect(address.embeddedIPv4Addresses == [IPv4Address(255, 255, 255, 254)])
     }
 
     @Test(

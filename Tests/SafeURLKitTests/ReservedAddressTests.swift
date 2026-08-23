@@ -179,7 +179,9 @@ struct ReservedIPv6RangeTests {
     func specificityOrdering() throws {
         // 2001::/23 covers Teredo and the benchmarking range, but the narrower name is the
         // useful one, so the lookup must report it.
-        #expect(try SpecialPurposeAddresses.match(IPv6Address.parse("2001:0::1"))?.name
+        // Server 8.8.8.8, zero client field: no reserved embedded IPv4, so the Teredo
+        // prefix itself is what matches.
+        #expect(try SpecialPurposeAddresses.match(IPv6Address.parse("2001:0:808:808::"))?.name
             == "Teredo tunnelling")
         #expect(try SpecialPurposeAddresses.match(IPv6Address.parse("2001:2::1"))?.name
             == "benchmarking")
