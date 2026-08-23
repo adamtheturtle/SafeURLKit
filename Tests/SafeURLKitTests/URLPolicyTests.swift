@@ -22,6 +22,14 @@ struct URLPolicyTests {
         #expect(validated.url.absoluteString == "https://coderpad.io/a/b?c=d")
     }
 
+    @Test("Dot and parent segments do not inflate the path segment limit")
+    func normalizedPathSegmentCount() throws {
+        let policy = URLPolicy(maximumPathSegments: 2)
+        #expect(policy.allows("https://coderpad.io/a/./b/../c/"))
+        #expect(!policy.allows("https://coderpad.io/a/b/c/"))
+        #expect(URLPolicy.normalizedPathSegmentCount("/a/./b/../c") == 2)
+    }
+
     @Test("Path segment count remains bounded when the text limit is disabled")
     func pathSegmentLimit() throws {
         let path = Array(repeating: "x", count: 257).joined(separator: "/")
