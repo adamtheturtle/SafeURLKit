@@ -162,6 +162,23 @@ struct HostParsingTests {
         }
     }
 
+    @Test("Bidi and format characters are rejected as confusable code points")
+    func confusableCharacters() {
+        for input in ["example\u{202E}.com", "app\u{200B}.coderpad.io"] {
+            do {
+                _ = try URLHost.parse(input)
+                Issue.record("\(input) should be rejected as confusable")
+            } catch let error as HostParsingError {
+                guard case .confusableCharacter = error else {
+                    Issue.record("\(input) should be confusableCharacter, got \(error)")
+                    continue
+                }
+            } catch {
+                Issue.record("unexpected error type for \(input)")
+            }
+        }
+    }
+
     @Test("Non-ASCII hosts are refused rather than transcoded")
     func nonASCII() {
         // Foundation exposes no IDNA entry point, and guessing at UTS-46 would produce a
