@@ -158,12 +158,14 @@ struct ReservedIPv6RangeTests {
         #expect(address == IPv4Address(169, 254, 169, 254))
     }
 
-    @Test("A mapped address with a public payload is still rejected, as IPv4-mapped")
+    @Test("A mapped address with a public payload unwraps to that public IPv4 destination")
     func mappedPublicPayload() throws {
-        // No legitimate URL writes a public address this way, so the mapped-range entry
-        // catches it even though the payload itself is ordinary public space.
-        let match = try #require(SpecialPurposeAddresses.match(IPv6Address.parse("::ffff:8.8.8.8")))
-        #expect(match.name == "IPv4-mapped")
+        #expect(try SpecialPurposeAddresses.match(IPv6Address.parse("::ffff:8.8.8.8")) == nil)
+        #expect(try SpecialPurposeAddresses.match(IPv6Address.parse("::ffff:93.184.216.34")) == nil)
+
+        let policy = URLPolicy(allowsIPLiteralHosts: true)
+        #expect(policy.allows("https://[::ffff:8.8.8.8]/"))
+        #expect(!policy.allows("https://[::ffff:127.0.0.1]/"))
     }
 
     @Test("Ordinary global unicast addresses are public")
