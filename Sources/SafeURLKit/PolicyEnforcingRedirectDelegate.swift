@@ -44,6 +44,12 @@ public enum RejectedRedirectBehavior: Sendable {
 /// - Note: Retain the delegate for the session's lifetime. `URLSession` holds a strong
 ///   reference to its delegate until the session is invalidated, so also call
 ///   `finishTasksAndInvalidate()` when done, as with any delegate-based session.
+///
+/// - Important: This type is `final` and all stored properties are immutable `let`s of
+///   `Sendable` type. The `@unchecked Sendable` annotation exists only because `NSObject`
+///   is not `Sendable`; it is **not** an invitation to add mutable state or to subclass.
+///   Subclassing is already impossible (`final`); do not copy this pattern onto a
+///   non-final type without the same immutability guarantees.
 public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDelegate,
     @unchecked Sendable {
     /// The policy applied to each redirect target.
@@ -90,9 +96,8 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         super.init()
     }
 
-    /// The `@unchecked Sendable` conformance is sound because all stored properties are
-    /// immutable `let`s of `Sendable` type; the annotation is only needed because `NSObject`
-    /// is not itself `Sendable`.
+    /// See the type-level note: `@unchecked Sendable` is justified solely by immutable
+    /// stored properties on a `final` class whose superclass is not `Sendable`.
     public func urlSession(
         _: URLSession,
         task: URLSessionTask,
