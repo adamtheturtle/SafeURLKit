@@ -40,12 +40,23 @@ public struct ValidatedURL: Sendable, Hashable {
         self.port = port
     }
 
-    /// The canonical origin, with the port always written out: `https://example.com:443`.
-    ///
-    /// Always including the port makes two origins comparable as strings without anyone
-    /// having to remember which schemes have which defaults - the omission that
-    /// same-host-different-port bugs are made of.
+    /// The canonical origin in RFC 6454 serialization: default ports are omitted, and IPv6
+    /// literals keep their square brackets.
     public var origin: String {
-        "\(scheme)://\(host):\(port)"
+        let hostText = originHost
+        if port == URLPolicy.defaultPort(forScheme: scheme) {
+            return "\(scheme)://\(hostText)"
+        }
+        return "\(scheme)://\(hostText):\(port)"
+    }
+
+    /// The host component of ``origin``, serialized the way browsers emit the Origin header.
+    private var originHost: String {
+        switch host {
+        case .domain, .ipv4:
+            host.description
+        case let .ipv6(address):
+            "[\(address)]"
+        }
     }
 }
