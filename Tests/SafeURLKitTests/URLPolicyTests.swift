@@ -19,6 +19,25 @@ struct URLPolicyTests {
         #expect(policy.allows("https://example.com/"))
     }
 
+    @Test("Post-DNS validation rejects reserved addresses from public hostnames")
+    func resolvedAddressValidation() throws {
+        let policy = URLPolicy.publicHTTPS
+        #expect(throws: URLValidationError.self) {
+            try policy.validate(resolvedAddress: IPv4Address(127, 0, 0, 1))
+        }
+        #expect(throws: URLValidationError.self) {
+            try policy.validate(resolvedAddresses: [URLHost.ipv4(IPv4Address(127, 0, 0, 1))])
+        }
+        #expect(throws: URLValidationError.self) {
+            try policy.validate(resolvedAddresses: [])
+        }
+        #expect(
+            try policy.validate(
+                resolvedAddresses: [URLHost.ipv4(IPv4Address(93, 184, 216, 34))]
+            ) == ()
+        )
+    }
+
     @Test("An explicit origin overrides special-use host blocks without extra flags")
     func explicitOriginOverridesSpecialUse() throws {
         let localhost = try URLHost.parse("localhost")

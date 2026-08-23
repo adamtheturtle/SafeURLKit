@@ -454,6 +454,24 @@ extension URLPolicy {
         try checkResolvedHost(host)
     }
 
+    /// Validate every address a resolver returned before opening a connection.
+    ///
+    /// Call this after DNS (or another resolver) with each A/AAAA result. Refuse the request
+    /// when any address fails, which closes the DNS-rebinding gap that string validation alone
+    /// cannot address.
+    ///
+    /// - Parameter addresses: Resolved hosts, typically ``URLHost/ipv4(_:)`` or
+    ///   ``URLHost/ipv6(_:)`` values.
+    /// - Throws: The first ``URLValidationError`` from ``validate(resolvedHost:)``.
+    public func validate(resolvedAddresses addresses: [URLHost]) throws(URLValidationError) {
+        guard !addresses.isEmpty else {
+            throw .malformedURL(reason: "DNS returned no addresses")
+        }
+        for address in addresses {
+            try validate(resolvedHost: address)
+        }
+    }
+
     /// The host and reserved-range checks, which are shared with redirect revalidation.
     /// The reserved-address check runs before the blanket IP-literal check so that the more
     /// specific reason is the one reported. Both reject `https://169.254.169.254/` under the
