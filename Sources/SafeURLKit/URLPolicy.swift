@@ -352,35 +352,40 @@ extension URLPolicy {
     }
 
     /// Re-check an address obtained from DNS (or another resolver) against this policy's
-    /// IP-literal and reserved-address rules.
+    /// reserved-address rules.
     ///
     /// String validation alone cannot stop DNS rebinding: a name that passes
     /// ``validate(_:)-(String)`` can later resolve to `127.0.0.1`. Call this with each
     /// resolved address *before* connecting, and refuse the request if it throws.
     ///
+    /// Unlike string-level validation, this does **not** apply ``allowsIPLiteralHosts``:
+    /// a DNS result is always an address. Only reserved-range (and special-use name) policy
+    /// applies here, so public A/AAAA records are accepted under ``publicHTTPS`` without
+    /// also permitting IP literals in URL strings.
+    ///
     /// - Parameter address: A resolved IPv4 address.
-    /// - Throws: ``URLValidationError/specialPurposeAddress(_:)`` or
-    ///   ``URLValidationError/ipLiteralHost(_:)`` when the address is not permitted.
+    /// - Throws: ``URLValidationError/specialPurposeAddress(_:)`` when the address is not
+    ///   permitted.
     public func validate(resolvedAddress address: IPv4Address) throws(URLValidationError) {
-        try checkHost(.ipv4(address))
+        try checkResolvedHost(.ipv4(address))
     }
 
-    /// Re-check a resolved IPv6 address against this policy.
+    /// Re-check a resolved IPv6 address against this policy's reserved-address rules.
     ///
     /// - Parameter address: A resolved IPv6 address.
-    /// - Throws: ``URLValidationError/specialPurposeAddress(_:)`` or
-    ///   ``URLValidationError/ipLiteralHost(_:)`` when the address is not permitted.
+    /// - Throws: ``URLValidationError/specialPurposeAddress(_:)`` when the address is not
+    ///   permitted.
     public func validate(resolvedAddress address: IPv6Address) throws(URLValidationError) {
-        try checkHost(.ipv6(address))
+        try checkResolvedHost(.ipv6(address))
     }
 
-    /// Re-check a resolved host against this policy's host rules.
+    /// Re-check a resolved host against this policy's post-DNS host rules.
     ///
     /// - Parameter host: Typically an ``URLHost/ipv4(_:)`` or ``URLHost/ipv6(_:)`` produced
     ///   from DNS results.
     /// - Throws: A ``URLValidationError`` when the host is not permitted.
     public func validate(resolvedHost host: URLHost) throws(URLValidationError) {
-        try checkHost(host)
+        try checkResolvedHost(host)
     }
 
     /// The host and reserved-range checks, which are shared with redirect revalidation.
@@ -390,14 +395,21 @@ extension URLPolicy {
     /// reads the log that they are looking at an SSRF attempt, where "is an IP address
     /// literal" does not.
     func checkHost(_ host: URLHost) throws(URLValidationError) {
+        try checkResolvedHost(host)
+        if !allowsIPLiteralHosts, host.isIPAddress {
+            throw .ipLiteralHost(host)
+        }
+    }
+
+    /// Post-DNS host checks: special-use names and reserved addresses only.
+    /// Deliberately omits ``allowsIPLiteralHosts`` so a public A/AAAA result is not rejected
+    /// merely for being an address.
+    func checkResolvedHost(_ host: URLHost) throws(URLValidationError) {
         if !allowsSpecialUseHostNames, let suffix = SpecialUseDomains.matches(host) {
             throw .specialUseHostName(host: host.description, suffix: suffix)
         }
         if !allowsSpecialPurposeAddresses, let match = SpecialPurposeAddresses.match(host) {
             throw .specialPurposeAddress(match)
-        }
-        if !allowsIPLiteralHosts, host.isIPAddress {
-            throw .ipLiteralHost(host)
         }
     }
 
