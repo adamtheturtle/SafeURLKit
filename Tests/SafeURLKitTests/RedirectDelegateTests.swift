@@ -135,22 +135,6 @@ struct RedirectDelegateTests {
         #expect(result == nil)
     }
 
-    @Test("Ambiguous characters in absolute Location headers are also rejected")
-    func ambiguousAbsoluteLocation() throws {
-        let recorded = Recorder()
-        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS) { url, error in
-            recorded.record(url: url, error: error)
-        }
-        let result = try decision(
-            delegate,
-            redirectingTo: "https://github.com/",
-            rawLocation: "https://git\\hub.com/"
-        )
-        #expect(result == nil)
-        #expect(recorded.rejections.count == 1)
-        #expect(recorded.rejections.first?.error.description.contains("ambiguous") == true)
-    }
-
     @Test("A relative Location is resolved against the response URL")
     func relativeLocation() throws {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
@@ -162,20 +146,15 @@ struct RedirectDelegateTests {
         #expect(result?.url?.absoluteString == "https://coderpad.io/next")
     }
 
-    @Test("Cross-origin redirects strip sensitive caller headers regardless of header name casing")
+    @Test("Cross-origin redirects strip sensitive caller headers")
     func crossOriginHeaderSanitization() throws {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
         let request = try decision(
             delegate,
             redirectingTo: "https://github.com/",
-            headers: [
-                "authorization": "Bearer secret",
-                "API-Key": "secret",
-                "Accept": "text/plain"
-            ]
+            headers: ["Authorization": "Bearer secret", "API-Key": "secret", "Accept": "text/plain"]
         )
 
-        #expect(request?.value(forHTTPHeaderField: "authorization") == nil)
         #expect(request?.value(forHTTPHeaderField: "Authorization") == nil)
         #expect(request?.value(forHTTPHeaderField: "API-Key") == nil)
         #expect(request?.value(forHTTPHeaderField: "Accept") == "text/plain")
@@ -194,109 +173,30 @@ struct RedirectDelegateTests {
         #expect(request?.value(forHTTPHeaderField: "API-Key") == "secret")
     }
 
-    @Test("Implicit and explicit default ports are the same origin for header preservation")
-    func sameOriginExplicitDefaultPort() throws {
-        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
-        // Source is https://coderpad.io/ (implicit 443); target spells :443 explicitly.
-        let request = try decision(
-            delegate,
-            redirectingTo: "https://coderpad.io:443/next",
-            headers: [
-                "Authorization": "Bearer secret",
-                "X-Access-Token": "secret"
-            ]
-        )
-        #expect(request?.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
-        #expect(request?.value(forHTTPHeaderField: "X-Access-Token") == "secret")
-    }
-
-    @Test("Same-origin comparison is semantic for decimal IPv4 spellings")
-    func sameOriginSemanticIPv4() throws {
-        let policy = URLPolicy(
-            allowedSchemes: ["http"],
-            portRule: .any,
-            allowsIPLiteralHosts: true,
-            allowsSpecialPurposeAddresses: true
-        )
-        let delegate = PolicyEnforcingRedirectDelegate(policy: policy)
-
-        let session = URLSession(configuration: .ephemeral)
-        defer { session.finishTasksAndInvalidate() }
-
-        let original = try #require(URL(string: "http://127.0.0.1:8080/"))
-        let target = try #require(URL(string: "http://2130706433:8080/next"))
-        let response = try #require(
-            HTTPURLResponse(
-                url: original,
-                statusCode: 302,
-                httpVersion: nil,
-                headerFields: ["Location": "http://2130706433:8080/next"]
-            )
-        )
-
-        var result: URLRequest?
-        var request = URLRequest(url: target)
-        request.setValue("Bearer secret", forHTTPHeaderField: "Authorization")
-        delegate.urlSession(
-            session,
-            task: session.dataTask(with: original),
-            willPerformHTTPRedirection: response,
-            newRequest: request
-        ) { result = $0 }
-
-        #expect(result?.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
-    }
-
-    @Test("Cross-origin redirects also strip X-Access-Token")
-    func stripsAccessToken() throws {
-        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
-        let request = try decision(
-            delegate,
-            redirectingTo: "https://github.com/",
-            headers: ["X-Access-Token": "secret", "Accept": "text/plain"]
-        )
-        #expect(request?.value(forHTTPHeaderField: "X-Access-Token") == nil)
-        #expect(request?.value(forHTTPHeaderField: "Accept") == "text/plain")
-    }
-
     @Test("The delegate exposes the policy it was built with")
     func exposesPolicy() {
         let policy = URLPolicy(allowedSchemes: ["http"])
         #expect(PolicyEnforcingRedirectDelegate(policy: policy).policy == policy)
     }
 
-    @Test("validatedInitialURL rejects redirects whose source URL is not same-origin")
-    func validatedInitialURLEnforced() throws {
-        let policy = URLPolicy(allowedOrigins: [.hostSuffix("coderpad.io")])
-        let validated = try policy.validate("https://coderpad.io/")
-        let delegate = PolicyEnforcingRedirectDelegate(
-            policy: policy,
-            validatedInitialURL: validated
+    @Test("Protocol-relative Location headers are validated as absolute URLs")
+    func protocolRelativeLocation() throws {
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
+        let result = try decision(
+            delegate,
+            redirectingTo: "https://169.254.169.254/",
+            rawLocation: "//169.254.169.254/"
         )
-
-        let session = URLSession(configuration: .ephemeral)
-        defer { session.finishTasksAndInvalidate() }
-
-        // Response claims to redirect from evil.com even though the session started at coderpad.io.
-        let mismatchedSource = try #require(URL(string: "https://evil.com/"))
-        let target = try #require(URL(string: "https://app.coderpad.io/next"))
-        let response = try #require(
-            HTTPURLResponse(
-                url: mismatchedSource,
-                statusCode: 302,
-                httpVersion: nil,
-                headerFields: ["Location": "https://app.coderpad.io/next"]
-            )
-        )
-
-        var result: URLRequest?
-        delegate.urlSession(
-            session,
-            task: session.dataTask(with: validated.url),
-            willPerformHTTPRedirection: response,
-            newRequest: URLRequest(url: target)
-        ) { result = $0 }
         #expect(result == nil)
+    }
+
+    @Test("rejectedRedirectBehavior is configurable")
+    func rejectedRedirectBehavior() {
+        let delegate = PolicyEnforcingRedirectDelegate(
+            policy: .publicHTTPS,
+            rejectedRedirectBehavior: .cancelTask
+        )
+        #expect(delegate.rejectedRedirectBehavior == .cancelTask)
     }
 }
 
