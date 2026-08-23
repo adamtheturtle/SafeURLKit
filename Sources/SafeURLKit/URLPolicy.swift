@@ -301,13 +301,45 @@ extension URLPolicy {
         (try? validate(url)) != nil
     }
 
+    /// Re-check an address obtained from DNS (or another resolver) against this policy's
+    /// IP-literal and reserved-address rules.
+    ///
+    /// String validation alone cannot stop DNS rebinding: a name that passes
+    /// ``validate(_:)-(String)`` can later resolve to `127.0.0.1`. Call this with each
+    /// resolved address *before* connecting, and refuse the request if it throws.
+    ///
+    /// - Parameter address: A resolved IPv4 address.
+    /// - Throws: ``URLValidationError/specialPurposeAddress(_:)`` or
+    ///   ``URLValidationError/ipLiteralHost(_:)`` when the address is not permitted.
+    public func validate(resolvedAddress address: IPv4Address) throws(URLValidationError) {
+        try checkHost(.ipv4(address))
+    }
+
+    /// Re-check a resolved IPv6 address against this policy.
+    ///
+    /// - Parameter address: A resolved IPv6 address.
+    /// - Throws: ``URLValidationError/specialPurposeAddress(_:)`` or
+    ///   ``URLValidationError/ipLiteralHost(_:)`` when the address is not permitted.
+    public func validate(resolvedAddress address: IPv6Address) throws(URLValidationError) {
+        try checkHost(.ipv6(address))
+    }
+
+    /// Re-check a resolved host against this policy's host rules.
+    ///
+    /// - Parameter host: Typically an ``URLHost/ipv4(_:)`` or ``URLHost/ipv6(_:)`` produced
+    ///   from DNS results.
+    /// - Throws: A ``URLValidationError`` when the host is not permitted.
+    public func validate(resolvedHost host: URLHost) throws(URLValidationError) {
+        try checkHost(host)
+    }
+
     /// The host and reserved-range checks, which are shared with redirect revalidation.
     /// The reserved-address check runs before the blanket IP-literal check so that the more
     /// specific reason is the one reported. Both reject `https://169.254.169.254/` under the
     /// default policy, but "reserved address: link-local / cloud metadata" tells whoever
     /// reads the log that they are looking at an SSRF attempt, where "is an IP address
     /// literal" does not.
-    private func checkHost(_ host: URLHost) throws(URLValidationError) {
+    func checkHost(_ host: URLHost) throws(URLValidationError) {
         if !allowsSpecialUseHostNames, let suffix = SpecialUseDomains.matches(host) {
             throw .specialUseHostName(host: host.description, suffix: suffix)
         }
