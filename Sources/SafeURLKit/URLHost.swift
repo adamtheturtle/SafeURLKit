@@ -64,8 +64,12 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
     /// The host contained a code point a URL host may never contain, such as a space,
     /// a control character, or one of `#/:<>?@[\]^|`.
     case forbiddenCodePoint(Character)
-    /// A `%` escape was malformed, or decoded to bytes that are not valid UTF-8.
+    /// A `%` escape was malformed.
     case invalidPercentEncoding
+    /// Percent-decoding produced bytes that are not valid UTF-8.
+    case invalidUTF8InHost
+    /// The host contained a bidi override or format character that can mask its true spelling.
+    case confusableCharacter(Character)
     /// The host contained non-ASCII code points after percent-decoding. See
     /// ``URLHost`` parsing notes: SafeURLKit deliberately does not implement IDNA.
     case nonASCII(String)
@@ -94,6 +98,13 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
             "the host contains the forbidden code point \(character.debugDescription)"
         case .invalidPercentEncoding:
             "the host contains invalid percent-encoding"
+        case .invalidUTF8InHost:
+            "the host contains percent-encoded bytes that are not valid UTF-8"
+        case let .confusableCharacter(character):
+            """
+            the host contains the confusable code point \(character.debugDescription), which \
+            can mask the host's true spelling
+            """
         case let .nonASCII(host):
             """
             the host \(host.debugDescription) contains non-ASCII code points, which \
@@ -279,7 +290,7 @@ extension URLHost {
         }
 
         guard let decoded = String(bytes: bytes, encoding: .utf8) else {
-            throw .invalidPercentEncoding
+            throw .invalidUTF8InHost
         }
         return decoded
     }

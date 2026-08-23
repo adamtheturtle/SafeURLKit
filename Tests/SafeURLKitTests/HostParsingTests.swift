@@ -153,6 +153,16 @@ struct HostParsingTests {
         }
     }
 
+    @Test("Invalid UTF-8 percent sequences are classified separately from malformed escapes")
+    func invalidUTF8PercentSequence() {
+        #expect(throws: HostParsingError.invalidUTF8InHost) {
+            try URLHost.parse("%ff%fe.com")
+        }
+        #expect(throws: HostParsingError.invalidPercentEncoding) {
+            try URLHost.parse("example%.com")
+        }
+    }
+
     @Test("Malformed percent-encoding is rejected")
     func malformedPercentEncoding() {
         for input in ["example%.com", "example%2.com", "example%zz.com", "%ff%fe.com"] {
