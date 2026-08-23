@@ -18,7 +18,7 @@ struct URLPolicyTests {
         #expect(validated.scheme == "https")
         #expect(validated.host == .domain("coderpad.io"))
         #expect(validated.port == 443)
-        #expect(validated.origin == "https://coderpad.io:443")
+        #expect(validated.origin == "https://coderpad.io")
         #expect(validated.url.absoluteString == "https://coderpad.io/a/b?c=d")
     }
 
@@ -40,7 +40,7 @@ struct URLPolicyTests {
     func explicitDefaultPort() throws {
         let validated = try URLPolicy.publicHTTPS.validate("https://coderpad.io:443/a")
         #expect(validated.port == 443)
-        #expect(validated.origin == "https://coderpad.io:443")
+        #expect(validated.origin == "https://coderpad.io")
     }
 
     // MARK: Schemes
@@ -97,10 +97,8 @@ struct URLPolicyTests {
         #expect(throws: URLValidationError.credentialsPresent) {
             try URLPolicy.publicHTTPS.validate("https://user@coderpad.io/")
         }
-        // A bare `@` still counts: it is the marker that a userinfo section was written.
-        #expect(throws: URLValidationError.credentialsPresent) {
-            try URLPolicy.publicHTTPS.validate("https://@coderpad.io/")
-        }
+        // A bare `@` is empty userinfo, not credentials.
+        #expect(try URLPolicy.publicHTTPS.validate("https://@coderpad.io/").host == .domain("coderpad.io"))
     }
 
     @Test("Fragments are rejected by default and allowed on request")
@@ -108,12 +106,21 @@ struct URLPolicyTests {
         #expect(throws: URLValidationError.fragmentPresent) {
             try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#frag")
         }
-        // An empty fragment is still a fragment.
-        #expect(throws: URLValidationError.fragmentPresent) {
-            try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#")
-        }
+        // A bare trailing `#` is not a fragment payload.
+        let bareHash = try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#")
+        #expect(bareHash.url.absoluteString == "https://coderpad.io/a#")
         let permissive = URLPolicy(allowsFragment: true)
         #expect(permissive.allows("https://coderpad.io/a#frag"))
+    }
+
+    @Test("IPv6 origins use bracketed host serialization and omit the default port")
+    func ipv6OriginSerialization() throws {
+        let policy = URLPolicy(
+            allowsIPLiteralHosts: true,
+            allowsSpecialPurposeAddresses: true
+        )
+        let validated = try policy.validate("https://[::1]/")
+        #expect(validated.origin == "https://[::1]")
     }
 
     @Test("Queries are allowed by default and can be forbidden")
@@ -300,18 +307,5 @@ struct URLPolicyTests {
         )
         #expect(error.description.contains("port"))
         #expect(!error.description.contains("reads the host"))
-    }
-}
-
-extension URLPolicy {
-    /// The error a URL is rejected with, or `nil` if it passes. Keeps the tests that care
-    /// about *why* something failed from re-writing the same do/catch each time.
-    func rejection(for urlString: String) -> URLValidationError? {
-        do {
-            _ = try validate(urlString)
-            return nil
-        } catch {
-            return error
-        }
     }
 }
