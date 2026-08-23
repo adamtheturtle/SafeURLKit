@@ -234,16 +234,49 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
     private static func sameOrigin(_ lhs: URL, _ rhs: URL) -> Bool {
         guard
             let leftScheme = lhs.scheme?.lowercasedASCII,
-            let rightScheme = rhs.scheme?.lowercasedASCII,
-            let leftHost = parseHost(lhs),
-            let rightHost = parseHost(rhs)
+            let rightScheme = rhs.scheme?.lowercasedASCII
         else {
             return false
         }
 
         let leftPort = lhs.port ?? URLPolicy.defaultPort(forScheme: leftScheme)
         let rightPort = rhs.port ?? URLPolicy.defaultPort(forScheme: rightScheme)
-        return leftScheme == rightScheme && leftHost == rightHost && leftPort == rightPort
+        guard leftScheme == rightScheme, leftPort == rightPort else {
+            return false
+        }
+
+        return hostsEquivalent(lhs, rhs)
+    }
+
+    /// Whether two `URL`s name the same host for origin comparison.
+    static func hostsEquivalent(_ lhs: URL, _ rhs: URL) -> Bool {
+        if let leftHost = parseHost(lhs), let rightHost = parseHost(rhs) {
+            return leftHost == rightHost
+        }
+
+        if let leftEncoded = foundationHostEncoding(lhs),
+           let rightEncoded = foundationHostEncoding(rhs),
+           leftEncoded == rightEncoded {
+            return true
+        }
+
+        // Foundation IDNA-decodes punycoded hosts into Unicode, which ``URLHost`` rejects by
+        // design. Fall back to Foundation's host spelling, as ``URLPolicy`` does in its
+        // cross-check, so same-origin redirects keep caller headers.
+        guard
+            let leftHost = lhs.host?.lowercasedASCII,
+            let rightHost = rhs.host?.lowercasedASCII
+        else {
+            return false
+        }
+        return leftHost == rightHost
+    }
+
+    /// The percent-encoded host Foundation would put on the wire, for IDNA fallback matching.
+    static func foundationHostEncoding(_ url: URL) -> String? {
+        URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .percentEncodedHost?
+            .lowercasedASCII
     }
 
     /// Parse a `URL`'s host into a semantic ``URLHost``, so `127.0.0.1` and `2130706433`
