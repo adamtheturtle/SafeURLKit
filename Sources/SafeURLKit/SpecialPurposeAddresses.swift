@@ -325,13 +325,13 @@ extension IPv6Address {
     /// - NAT64, `64:ff9b::a.b.c.d`
     /// - 6to4, `2002:aabb:ccdd::/48`, where the address is in the second and third pieces
     /// - Teredo, `2001:0:<server>::/32`, where the server address is in the third and
-    ///   fourth pieces
+    ///   fourth pieces, and the client IPv4 is in the seventh and eighth pieces XOR-ed
+    ///   with all ones (RFC 4380)
     ///
-    /// Teredo's fifth field, the client address XOR-ed with all ones, is deliberately *not*
-    /// read. It identifies the far endpoint rather than a host anything here would connect
-    /// to, and de-obfuscating it on an address that merely starts with `2001:0:` produces a
-    /// meaningless address that then matches a reserved range and buries the real reason in
-    /// the log.
+    /// Both Teredo fields are checked: a reserved server *or* a reserved obfuscated client
+    /// is reported as that IPv4 match (for example cloud metadata), which is more useful in
+    /// logs than the blanket "Teredo tunnelling" prefix alone. An all-zero field is still
+    /// treated as a placeholder rather than `0.0.0.0`.
     ///
     /// The all-zero and loopback addresses are excluded from the IPv4-compatible reading,
     /// since `::` and `::1` are those addresses in their own right and are caught by the
@@ -372,6 +372,11 @@ extension IPv6Address {
 
         if pieces[0] == 0x2001, pieces[1] == 0 {
             appendIfNonZero(UInt32(pieces[2]) << 16 | UInt32(pieces[3]))
+            // Client IPv4 is obfuscated by XOR with all-ones (RFC 4380 §4).
+            appendIfNonZero(
+                UInt32(pieces[6]) << 16 | UInt32(pieces[7]),
+                transform: { $0 ^ 0xFFFF_FFFF }
+            )
         }
 
         return addresses
