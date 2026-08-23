@@ -19,6 +19,17 @@ struct URLPolicyTests {
         #expect(policy.allows("https://example.com/"))
     }
 
+    @Test("An explicit origin overrides special-use host blocks without extra flags")
+    func explicitOriginOverridesSpecialUse() throws {
+        let localhost = try URLHost.parse("localhost")
+        let policy = URLPolicy(
+            allowedOrigins: [.origin(scheme: "https", host: localhost, port: nil)],
+            allowsIPLiteralHosts: true,
+            allowsSpecialPurposeAddresses: true
+        )
+        #expect(try policy.validate("https://localhost/").host == localhost)
+    }
+
     @Test("The default policy accepts an ordinary public HTTPS URL")
     func happyPath() throws {
         let validated = try URLPolicy.publicHTTPS.validate("https://coderpad.io/a/b?c=d")
