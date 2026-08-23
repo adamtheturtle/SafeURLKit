@@ -111,6 +111,7 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
             let validated = try validateRedirect(response: response, generatedURL: url)
             guard validated.url.absoluteString == url.absoluteString else {
                 throw URLValidationError.parserDisagreement(
+                    field: "URL",
                     safeURLKit: validated.url.absoluteString,
                     foundation: url.absoluteString
                 )
@@ -159,6 +160,7 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         let validated = try policy.validate(resolved.absoluteString)
         guard resolved.absoluteString == generatedURL.absoluteString else {
             throw .parserDisagreement(
+                field: "URL",
                 safeURLKit: resolved.absoluteString,
                 foundation: generatedURL.absoluteString
             )

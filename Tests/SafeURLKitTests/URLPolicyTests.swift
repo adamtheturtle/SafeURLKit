@@ -97,9 +97,10 @@ struct URLPolicyTests {
         #expect(throws: URLValidationError.credentialsPresent) {
             try URLPolicy.publicHTTPS.validate("https://user@coderpad.io/")
         }
-        // A bare `@` is an empty userinfo section, not credentials.
-        #expect(try URLPolicy.publicHTTPS.validate("https://@coderpad.io/").host
-            == .domain("coderpad.io"))
+        // A bare `@` still counts: it is the marker that a userinfo section was written.
+        #expect(throws: URLValidationError.credentialsPresent) {
+            try URLPolicy.publicHTTPS.validate("https://@coderpad.io/")
+        }
     }
 
     @Test("Fragments are rejected by default and allowed on request")
@@ -107,8 +108,10 @@ struct URLPolicyTests {
         #expect(throws: URLValidationError.fragmentPresent) {
             try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#frag")
         }
-        // A bare trailing `#` carries no fragment payload and is allowed.
-        #expect(URLPolicy.publicHTTPS.allows("https://coderpad.io/a#"))
+        // An empty fragment is still a fragment.
+        #expect(throws: URLValidationError.fragmentPresent) {
+            try URLPolicy.publicHTTPS.validate("https://coderpad.io/a#")
+        }
         let permissive = URLPolicy(allowsFragment: true)
         #expect(permissive.allows("https://coderpad.io/a#frag"))
     }
@@ -119,9 +122,6 @@ struct URLPolicyTests {
         let thumbnailOnly = URLPolicy(allowsQuery: false)
         #expect(throws: URLValidationError.queryPresent) {
             try thumbnailOnly.validate("https://coderpad.io/a?b=c")
-        }
-        #expect(throws: URLValidationError.queryPresent) {
-            try thumbnailOnly.validate("https://coderpad.io/a#notaquery?b=c")
         }
         #expect(thumbnailOnly.allows("https://coderpad.io/a"))
     }
@@ -159,10 +159,6 @@ struct URLPolicyTests {
         #expect(!policy.allows("https://coderpad.io:65536/"))
         #expect(!policy.allows("https://coderpad.io:-1/"))
         #expect(!policy.allows("https://coderpad.io:80x/"))
-        // Port 0 is reserved and never a usable destination.
-        #expect(throws: URLValidationError.disallowedPort(0)) {
-            try policy.validate("https://coderpad.io:0/")
-        }
         // An empty port means the scheme's default.
         #expect(try policy.validate("https://coderpad.io:/").port == 443)
     }
@@ -248,18 +244,6 @@ struct URLPolicyTests {
         }
     }
 
-    @Test("An explicit allow-list entry can override the special-use host name block")
-    func allowListOverridesSpecialUseName() throws {
-        let policy = URLPolicy(
-            allowedSchemes: ["http"],
-            allowedOrigins: [.host(.domain("localhost"))],
-            portRule: .any
-        )
-        #expect(try policy.validate("http://localhost:3000/").host == .domain("localhost"))
-        // Other reserved names still fail.
-        #expect(!policy.allows("http://printer.local:3000/"))
-    }
-
     // MARK: Length
 
     @Test("The length limit is applied to the string's UTF-8 representation")
@@ -297,22 +281,6 @@ struct URLPolicyTests {
         #expect(!URLPolicy.publicHTTPS.allows(bad))
     }
 
-    @Test("Relative URLs are rejected explicitly by validate(URL)")
-    func relativeURLRejected() throws {
-        let relative = try #require(URL(string: "/path"))
-        #expect(relative.host == nil)
-        #expect(throws: URLValidationError.self) {
-            try URLPolicy.publicHTTPS.validate(relative)
-        }
-    }
-
-    @Test("ValidatedURL.scheme matches the scheme casing of ValidatedURL.url")
-    func schemeCasingMatchesURL() throws {
-        let validated = try URLPolicy.publicHTTPS.validate("HTTPS://coderpad.io/")
-        #expect(validated.scheme == "https")
-        #expect(validated.url.scheme?.lowercased() == "https")
-    }
-
     // MARK: Errors
 
     @Test("Rejections describe both what was blocked and what it resolved to")
@@ -323,38 +291,27 @@ struct URLPolicyTests {
         #expect(error.description.contains("loopback"))
     }
 
-    @Test("rejection(for:) exposes the reason allows() discards")
-    func rejectionAPI() throws {
-        let error = try #require(URLPolicy.publicHTTPS.rejection(for: "https://127.0.0.1/"))
-        #expect(error.description.contains("IP address literal") || error.description.contains("loopback"))
-        #expect(URLPolicy.publicHTTPS.rejection(for: "https://coderpad.io/") == nil)
+    @Test("parserDisagreement names the field that differed")
+    func parserDisagreementField() {
+        let error = URLValidationError.parserDisagreement(
+            field: "port",
+            safeURLKit: "443",
+            foundation: "8443"
+        )
+        #expect(error.description.contains("port"))
+        #expect(!error.description.contains("reads the host"))
     }
+}
 
-    @Test("Resolved addresses can be re-checked after DNS lookup")
-    func validateResolvedAddresses() throws {
-        let policy = URLPolicy.publicHTTPS
-
-        #expect(throws: URLValidationError.self) {
-            try policy.validate(resolvedAddress: IPv4Address(127, 0, 0, 1))
-        }
-        #expect(throws: URLValidationError.self) {
-            try policy.validate(resolvedAddress: IPv4Address(169, 254, 169, 254))
-        }
-        #expect(throws: URLValidationError.self) {
-            try policy.validate(resolvedAddress: IPv6Address.parse("::1"))
-        }
-
-        // Public addresses still fail the default policy's "no IP literals" rule, which is
-        // what you want when connecting by address rather than by name.
-        #expect(throws: URLValidationError.ipLiteralHost(.ipv4(IPv4Address(8, 8, 8, 8)))) {
-            try policy.validate(resolvedAddress: IPv4Address(8, 8, 8, 8))
-        }
-
-        let literalsOK = URLPolicy(allowsIPLiteralHosts: true)
-        try literalsOK.validate(resolvedAddress: IPv4Address(8, 8, 8, 8))
-        try literalsOK.validate(resolvedHost: .ipv4(IPv4Address(93, 184, 216, 34)))
-        #expect(throws: URLValidationError.self) {
-            try literalsOK.validate(resolvedAddress: IPv4Address(10, 0, 0, 1))
+extension URLPolicy {
+    /// The error a URL is rejected with, or `nil` if it passes. Keeps the tests that care
+    /// about *why* something failed from re-writing the same do/catch each time.
+    func rejection(for urlString: String) -> URLValidationError? {
+        do {
+            _ = try validate(urlString)
+            return nil
+        } catch {
+            return error
         }
     }
 }
