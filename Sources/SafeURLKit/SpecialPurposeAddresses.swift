@@ -179,9 +179,10 @@ public enum SpecialPurposeAddresses {
     /// The IPv6 special-purpose address registry.
     ///
     /// The IPv4-mapped and IPv4-compatible entries are listed even though
-    /// ``match(_:)-(IPv6Address)`` unwraps those forms first: a mapped address whose payload
-    /// is a *public* IPv4 address, such as `[::ffff:93.184.216.34]`, is still a spelling no
-    /// legitimate URL uses, and the entry is what rejects it.
+    /// ``match(_:)-(IPv6Address)`` unwraps those forms first: they still catch mapped
+    /// addresses that somehow carry no extractable payload. When the payload *is*
+    /// extractable and public, ``match(_:)-(IPv6Address)`` skips these wrapper entries so
+    /// the address is treated as that public IPv4 destination.
     public static let ipv6: [SpecialPurposeIPv6Range] = [
         .init(.init(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 0])!, 128)!, "unspecified"),
         .init(.init(IPv6Address(pieces: [0, 0, 0, 0, 0, 0, 0, 1])!, 128)!, "loopback"),
@@ -263,13 +264,37 @@ public enum SpecialPurposeAddresses {
     /// Addresses embedded in an IPv6 wrapper are checked first and reported as the IPv4
     /// match they are, so `[::ffff:169.254.169.254]` is rejected as cloud metadata rather
     /// than as the vaguer "IPv4-mapped". See ``IPv6Address/embeddedIPv4Addresses``.
+    ///
+    /// When the embedded IPv4 address is ordinary public space, the IPv4-mapped and NAT64
+    /// wrapper prefixes themselves are not treated as reserved: the address is unwrapped to
+    /// that public IPv4 destination. Other IPv6 special ranges (Teredo, unique-local, and so
+    /// on) still match as usual.
     public static func match(_ address: IPv6Address) -> SpecialPurposeMatch? {
-        for embedded in address.embeddedIPv4Addresses {
-            if let match = match(embedded) {
+        let embedded = address.embeddedIPv4Addresses
+        for emb in embedded {
+            if let match = match(emb) {
                 return match
             }
         }
-        return ipv6.first { $0.prefix.contains(address) }.map { .ipv6($0, address) }
+        return ipv6.first { range in
+            if !embedded.isEmpty, Self.isIPv4WrapperRange(range) {
+                return false
+            }
+            return range.prefix.contains(address)
+        }.map { .ipv6($0, address) }
+    }
+
+    /// Prefixes that only exist to carry an embedded IPv4 address. When that payload is
+    /// public, rejecting the wrapper would block a destination that is otherwise fine.
+    private static func isIPv4WrapperRange(_ range: SpecialPurposeIPv6Range) -> Bool {
+        switch range.name {
+        case "IPv4-mapped",
+             "IPv4-IPv6 translation (NAT64)",
+             "IPv4-IPv6 translation (local-use NAT64)":
+            true
+        default:
+            false
+        }
     }
 
     /// The registry entry `host` falls in, or `nil` for a domain name or for an address in
