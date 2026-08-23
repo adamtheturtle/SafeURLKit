@@ -306,4 +306,15 @@ struct ReservedDomainTests {
         #expect(try SpecialUseDomains.matches(URLHost.parse("127.0.0.1")) == nil)
         #expect(try SpecialUseDomains.matches(URLHost.parse("[::1]")) == nil)
     }
+
+    @Test("The .internal suffix blocks every label under it, not only cloud metadata")
+    func internalSuffixIsConservative() throws {
+        // Deliberate false-positive posture: any *.internal name is treated as reserved.
+        for host in ["metadata.google.internal", "app.internal", "internal"] {
+            #expect(try SpecialUseDomains.matches(URLHost.parse(host)) == "internal")
+            #expect(!URLPolicy.publicHTTPS.allows("https://\(host)/"))
+        }
+        let optedIn = URLPolicy(allowsSpecialUseHostNames: true)
+        #expect(optedIn.allows("https://app.internal/"))
+    }
 }

@@ -35,6 +35,14 @@ public enum SpecialUseDomains {
     /// to whatever is on the local link; `.internal` because that is where cloud providers
     /// put metadata services; `.onion` because resolving it either fails or leaves through
     /// a proxy the caller did not choose.
+    ///
+    /// - Important: `.internal` is a *vendor-conventional* suffix, not an IANA special-use
+    ///   name. Blocking it means **every** `*.internal` host is rejected under the default
+    ///   policy — including a hypothetical future public name under a delegated `.internal`
+    ///   TLD. That false-positive risk is deliberate: cloud metadata hosts such as
+    ///   `metadata.google.internal` are exactly the SSRF targets this list exists to catch.
+    ///   Opt in with ``URLPolicy/allowsSpecialUseHostNames`` or an explicit
+    ///   ``URLPolicy/allowedOrigins`` entry when a specific `.internal` name must be fetched.
     public static let suffixes: [String] = [
         "localhost",
         "local",
