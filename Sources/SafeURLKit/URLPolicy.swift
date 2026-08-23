@@ -142,6 +142,19 @@ public struct URLPolicy: Sendable, Hashable {
         maximumLength: Int? = 2048,
         maximumPathSegments: Int? = 256
     ) {
+        if let maximumLength, maximumLength < 1 {
+            preconditionFailure(
+                "maximumLength must be at least 1, or nil for no limit; 0 rejects every non-empty URL"
+            )
+        }
+        if let maximumPathSegments, maximumPathSegments < 1 {
+            preconditionFailure(
+                """
+                maximumPathSegments must be at least 1, or nil for no limit; 0 rejects every \
+                non-empty path
+                """
+            )
+        }
         normalizedAllowedSchemes = Set(allowedSchemes.map(\.lowercasedASCII))
         self.allowedOrigins = allowedOrigins
         self.portRule = portRule

@@ -271,6 +271,13 @@ struct URLPolicyTests {
         #expect(policy.allows(long))
     }
 
+    @Test("maximumLength 0 traps at configuration time")
+    func maximumLengthZero() async {
+        await #expect(processExitsWith: .failure) {
+            _ = URLPolicy(maximumLength: 0)
+        }
+    }
+
     @Test("Combining scalars cannot bypass the UTF-8 byte limit")
     func combiningScalarsRespectLengthLimit() throws {
         let url = "https://example.com/" + "e" + String(repeating: "\u{0301}", count: 100)
