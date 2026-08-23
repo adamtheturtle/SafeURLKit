@@ -254,8 +254,6 @@ extension URLPolicy {
             throw .invalidHost(error)
         }
 
-        try checkHost(host)
-
         // A scheme with no default port and no port written names no destination port at
         // all, so there is nothing a port rule could approve. Reject rather than let a
         // placeholder port stand in for one - only reachable via a custom allowed scheme.
@@ -284,6 +282,8 @@ extension URLPolicy {
                 throw .disallowedPort(port)
             }
         }
+
+        try checkHost(host, scheme: parsed.scheme, port: port)
 
         if let allowedOrigins {
             guard
@@ -365,6 +365,29 @@ extension URLPolicy {
     /// literal" does not.
     func checkHost(_ host: URLHost) throws(URLValidationError) {
         if !allowsSpecialUseHostNames, let suffix = SpecialUseDomains.matches(host) {
+            throw .specialUseHostName(host: host.description, suffix: suffix)
+        }
+        if !allowsSpecialPurposeAddresses, let match = SpecialPurposeAddresses.match(host) {
+            throw .specialPurposeAddress(match)
+        }
+        if !allowsIPLiteralHosts, host.isIPAddress {
+            throw .ipLiteralHost(host)
+        }
+    }
+
+    /// Like ``checkHost(_:)``, but skips the special-use host name block when the host is
+    /// explicitly named by ``allowedOrigins``: an allow-list entry for `localhost` must be
+    /// able to override the reserved-name block, otherwise the entry can never match.
+    func checkHost(
+        _ host: URLHost,
+        scheme: String,
+        port: Int
+    ) throws(URLValidationError) {
+        let explicitlyAllowed = allowedOrigins?.contains {
+            $0.matches(scheme: scheme, host: host, port: port)
+        } ?? false
+
+        if !allowsSpecialUseHostNames, !explicitlyAllowed, let suffix = SpecialUseDomains.matches(host) {
             throw .specialUseHostName(host: host.description, suffix: suffix)
         }
         if !allowsSpecialPurposeAddresses, let match = SpecialPurposeAddresses.match(host) {

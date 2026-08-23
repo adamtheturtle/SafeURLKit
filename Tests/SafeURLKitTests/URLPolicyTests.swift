@@ -248,6 +248,18 @@ struct URLPolicyTests {
         }
     }
 
+    @Test("An explicit allow-list entry can override the special-use host name block")
+    func allowListOverridesSpecialUseName() throws {
+        let policy = URLPolicy(
+            allowedSchemes: ["http"],
+            allowedOrigins: [.host(.domain("localhost"))],
+            portRule: .any
+        )
+        #expect(try policy.validate("http://localhost:3000/").host == .domain("localhost"))
+        // Other reserved names still fail.
+        #expect(!policy.allows("http://printer.local:3000/"))
+    }
+
     // MARK: Length
 
     @Test("The length limit is applied to the string's UTF-8 representation")
