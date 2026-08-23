@@ -69,6 +69,8 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
     /// The host contained non-ASCII code points after percent-decoding. See
     /// ``URLHost`` parsing notes: SafeURLKit deliberately does not implement IDNA.
     case nonASCII(String)
+    /// The host contained a bidi override or format character that can mask its true spelling.
+    case confusableCharacter(Character)
     /// A host that began with `[` did not end with `]`.
     case unclosedIPv6Bracket
     /// A domain label was empty, as in `a..b` or a leading dot.
@@ -96,6 +98,11 @@ public enum HostParsingError: Error, Sendable, Hashable, CustomStringConvertible
             """
             the host \(host.debugDescription) contains non-ASCII code points, which \
             SafeURLKit does not transcode; supply an already punycoded host
+            """
+        case let .confusableCharacter(character):
+            """
+            the host contains the confusable code point \(character.debugDescription), which \
+            can mask the host's true spelling
             """
         case .unclosedIPv6Bracket:
             "the host opens an IPv6 literal with `[` but does not close it"
@@ -145,6 +152,19 @@ extension URLHost {
         forbiddenCodePoints.contains(scalar) || scalar.isC0Control
     }
 
+    /// Bidi overrides and other format characters that can hide a host's visual spelling.
+    private static func isConfusable(_ scalar: Unicode.Scalar) -> Bool {
+        if scalar.properties.generalCategory == .format {
+            return true
+        }
+        switch scalar.value {
+        case 0x061C, 0x200E, 0x200F, 0x202A ... 0x202E, 0x2066 ... 0x2069:
+            return true
+        default:
+            return false
+        }
+    }
+
     /// Parse a URL host string.
     ///
     /// The algorithm is the WHATWG host parser for special (HTTP-family) schemes, with one
@@ -166,6 +186,10 @@ extension URLHost {
         }
 
         let decoded = try percentDecoded(input)
+
+        if let confusable = decoded.unicodeScalars.first(where: isConfusable) {
+            throw .confusableCharacter(Character(confusable))
+        }
 
         guard decoded.unicodeScalars.allSatisfy(\.isASCII) else {
             throw .nonASCII(decoded)
