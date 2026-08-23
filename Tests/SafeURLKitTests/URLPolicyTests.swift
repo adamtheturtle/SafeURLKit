@@ -62,6 +62,13 @@ struct URLPolicyTests {
         #expect(URLPolicy.publicHTTPS.allows(urlString) == allowed)
     }
 
+    @Test("ValidatedURL keeps Foundation's URL string; scheme is lowercased separately")
+    func validatedURLPreservesInputSpelling() throws {
+        let mixed = try URLPolicy.publicHTTPS.validate("HTTPS://coderpad.io/a%2Fb")
+        #expect(mixed.scheme == "https")
+        #expect(mixed.url.absoluteString == "HTTPS://coderpad.io/a%2Fb")
+    }
+
     @Test("A policy may allow plaintext HTTP, as a self-hosted origin needs")
     func httpAllowed() throws {
         let policy = URLPolicy(allowedSchemes: ["https", "http"])
