@@ -173,6 +173,40 @@ struct RedirectDelegateTests {
         #expect(request?.value(forHTTPHeaderField: "API-Key") == "secret")
     }
 
+    @Test("Equivalent host spellings count as same-origin for header preservation")
+    func semanticSameOriginHeaderPreservation() throws {
+        let policy = URLPolicy(
+            allowsIPLiteralHosts: true,
+            allowsSpecialPurposeAddresses: true
+        )
+        let delegate = PolicyEnforcingRedirectDelegate(policy: policy)
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.finishTasksAndInvalidate() }
+
+        let original = try #require(URL(string: "https://127.0.0.1/"))
+        let target = try #require(URL(string: "https://2130706433/next"))
+        let response = try #require(
+            HTTPURLResponse(
+                url: original,
+                statusCode: 302,
+                httpVersion: nil,
+                headerFields: ["Location": "https://2130706433/next"]
+            )
+        )
+
+        var result: URLRequest?
+        var request = URLRequest(url: target)
+        request.setValue("Bearer secret", forHTTPHeaderField: "Authorization")
+        delegate.urlSession(
+            session,
+            task: session.dataTask(with: original),
+            willPerformHTTPRedirection: response,
+            newRequest: request
+        ) { result = $0 }
+
+        #expect(result?.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
+    }
+
     @Test("The delegate exposes the policy it was built with")
     func exposesPolicy() {
         let policy = URLPolicy(allowedSchemes: ["http"])
