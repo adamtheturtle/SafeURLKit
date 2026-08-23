@@ -188,6 +188,12 @@ extension URLPolicy {
 
 extension URLPolicy {
     /// The default port for a scheme, or `nil` for schemes with no default.
+    ///
+    /// This table is independent of ``allowedSchemes``. The default policy permits only
+    /// `https`, but `ftp` (and `http` / `ws` / `wss`) still have well-known defaults so a
+    /// caller that *does* add those schemes to ``allowedSchemes`` — or that builds an
+    /// ``OriginRule/origin(scheme:host:port:)`` — gets the correct effective port without
+    /// a second lookup table. Presence here is not permission to use the scheme.
     public static func defaultPort(forScheme scheme: String) -> Int? {
         switch scheme.lowercasedASCII {
         case "http", "ws": 80
