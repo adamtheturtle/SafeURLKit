@@ -17,6 +17,8 @@ struct URLPolicyTests {
         let policy = URLPolicy(allowedOrigins: [.hostSuffix("example.com")])
         #expect(policy.allows("https://www.example.com/"))
         #expect(policy.allows("https://example.com/"))
+    }
+
     @Test("An explicit origin overrides special-use host blocks without extra flags")
     func explicitOriginOverridesSpecialUse() throws {
         let localhost = try URLHost.parse("localhost")
