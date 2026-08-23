@@ -135,6 +135,22 @@ struct RedirectDelegateTests {
         #expect(result == nil)
     }
 
+    @Test("Ambiguous characters in absolute Location headers are also rejected")
+    func ambiguousAbsoluteLocation() throws {
+        let recorded = Recorder()
+        let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS) { url, error in
+            recorded.record(url: url, error: error)
+        }
+        let result = try decision(
+            delegate,
+            redirectingTo: "https://github.com/",
+            rawLocation: "https://git\\hub.com/"
+        )
+        #expect(result == nil)
+        #expect(recorded.rejections.count == 1)
+        #expect(recorded.rejections.first?.error.description.contains("ambiguous") == true)
+    }
+
     @Test("A relative Location is resolved against the response URL")
     func relativeLocation() throws {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
