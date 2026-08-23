@@ -78,6 +78,14 @@ struct BypassCorpusTests {
         #expect(Self.policy.allows(urlString))
     }
 
+    @Test("A single-label hostSuffix never matches, so hostSuffix(com) cannot open every .com")
+    func singleLabelSuffixFailsClosed() {
+        let policy = URLPolicy(allowedOrigins: [.hostSuffix("com")])
+        #expect(!policy.allows("https://example.com/"))
+        #expect(!policy.allows("https://com/"))
+        #expect(!policy.allows("https://coderpad.io/"))
+    }
+
     @Test(
         "Every exotic spelling of an internal destination is rejected",
         arguments: [
