@@ -275,6 +275,22 @@ struct ReservedDomainTests {
         )
     }
 
+    @Test(
+        "DNS rebinding wildcard services are treated as reserved host names",
+        arguments: [
+            ("127.0.0.1.nip.io", "nip.io"),
+            ("8.8.8.8.sslip.io", "sslip.io"),
+            ("127.0.0.1.xip.io", "xip.io"),
+            ("localtest.me", "localtest.me"),
+            ("app.vcap.me", "vcap.me"),
+            ("foo.lvh.me", "lvh.me")
+        ]
+    )
+    func dnsRebindingServices(_ host: String, _ suffix: String) throws {
+        #expect(try SpecialUseDomains.matches(URLHost.parse(host)) == suffix)
+        #expect(!URLPolicy.publicHTTPS.allows("https://\(host)/"))
+    }
+
     @Test("IP literals never match a name rule")
     func literals() throws {
         #expect(try SpecialUseDomains.matches(URLHost.parse("127.0.0.1")) == nil)
