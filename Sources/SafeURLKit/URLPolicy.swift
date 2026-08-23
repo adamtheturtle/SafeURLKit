@@ -236,7 +236,7 @@ extension URLPolicy {
         }
 
         if let maximumPathSegments {
-            let count = parsed.path.split(separator: "/", omittingEmptySubsequences: true).count
+            let count = Self.normalizedPathSegmentCount(parsed.path)
             if count > maximumPathSegments {
                 throw .tooManyPathSegments(count: count, limit: maximumPathSegments)
             }
@@ -339,6 +339,25 @@ extension URLPolicy {
     /// Whether `url` satisfies this policy, discarding the reason it does not.
     public func allows(_ url: URL) -> Bool {
         (try? validate(url)) != nil
+    }
+
+    /// Count path segments after removing `.` and resolving `..`, matching the logical path
+    /// depth rather than raw slash splits.
+    static func normalizedPathSegmentCount(_ path: String) -> Int {
+        var stack: [Substring] = []
+        for segment in path.split(separator: "/", omittingEmptySubsequences: true) {
+            if segment == "." {
+                continue
+            }
+            if segment == ".." {
+                if !stack.isEmpty {
+                    stack.removeLast()
+                }
+                continue
+            }
+            stack.append(segment)
+        }
+        return stack.count
     }
 
     /// The error `urlString` is rejected with, or `nil` if it passes.
