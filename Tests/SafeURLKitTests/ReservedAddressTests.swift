@@ -316,6 +316,8 @@ struct ReservedDomainTests {
         }
         let optedIn = URLPolicy(allowsSpecialUseHostNames: true)
         #expect(optedIn.allows("https://app.internal/"))
+    }
+
     @Test("The .alt special-use TLD is blocked unless the caller opts in")
     func altTLDBlockedByDefault() throws {
         #expect(try SpecialUseDomains.matches(URLHost.parse("foo.alt")) == "alt")
