@@ -12,6 +12,13 @@ import Testing
 
 @Suite("URL policy")
 struct URLPolicyTests {
+    @Test("An allow-listed IANA example domain passes without allowsSpecialUseHostNames")
+    func exampleDomainAllowList() {
+        let policy = URLPolicy(allowedOrigins: [.hostSuffix("example.com")])
+        #expect(policy.allows("https://www.example.com/"))
+        #expect(policy.allows("https://example.com/"))
+    }
+
     @Test("The default policy accepts an ordinary public HTTPS URL")
     func happyPath() throws {
         let validated = try URLPolicy.publicHTTPS.validate("https://coderpad.io/a/b?c=d")
