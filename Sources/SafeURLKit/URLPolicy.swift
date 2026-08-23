@@ -254,9 +254,6 @@ extension URLPolicy {
             throw .invalidHost(error)
         }
 
-        // A scheme with no default port and no port written names no destination port at
-        // all, so there is nothing a port rule could approve. Reject rather than let a
-        // placeholder port stand in for one - only reachable via a custom allowed scheme.
         let port = try checkedPort(scheme: parsed.scheme, parsedPort: parsed.port)
 
         try checkHost(host, scheme: parsed.scheme, port: port)
@@ -278,8 +275,8 @@ extension URLPolicy {
         return ValidatedURL(url: url, scheme: parsed.scheme, host: host, port: port)
     }
 
-    /// Resolve the effective port and enforce ``portRule``, including the unconditional
-    /// rejection of port 0.
+    /// Resolve the effective port and enforce ``portRule``, including rejecting port 0.
+    /// A scheme with no default port and no written port names no destination, so it fails.
     func checkedPort(scheme: String, parsedPort: Int?) throws(URLValidationError) -> Int {
         guard let port = parsedPort ?? Self.defaultPort(forScheme: scheme) else {
             throw .malformedURL(
@@ -288,8 +285,7 @@ extension URLPolicy {
             )
         }
 
-        // Port 0 is reserved and never a usable destination; reject it under every port
-        // rule so `.any` cannot accidentally admit it.
+        // Port 0 is reserved; reject under every port rule so `.any` cannot admit it.
         if port == 0 {
             throw .disallowedPort(0)
         }

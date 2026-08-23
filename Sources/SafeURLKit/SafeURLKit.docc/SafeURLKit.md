@@ -38,7 +38,7 @@ address it denotes before any policy check runs, and
 
 Validating with one parser and fetching with another is how a correct check ends up
 guarding nothing. `SafeURLKit` splits the URL string itself, then re-reads it through
-`URLComponents` and rejects with ``URLValidationError/parserDisagreement(safeURLKit:foundation:)``
+`URLComponents` and rejects with ``URLValidationError/parserDisagreement(field:safeURLKit:foundation:)``
 if the two readings differ. Characters that parsers are known to disagree about - tab,
 newline, backslash - are refused outright rather than normalized.
 

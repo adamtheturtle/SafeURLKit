@@ -146,6 +146,7 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
             let validated = try policy.validate(absoluteLocation)
             guard validated.url.absoluteString == generatedURL.absoluteString else {
                 throw .parserDisagreement(
+                    field: "URL",
                     safeURLKit: validated.url.absoluteString,
                     foundation: generatedURL.absoluteString
                 )
