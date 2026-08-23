@@ -227,6 +227,21 @@ struct BypassCorpusTests {
         #expect(!policy.allows("https://xn--e1afmkfd.xn--p1ai.evil.com/"))
     }
 
+    @Test("Punycode ACE labels are accepted without IDNA/UTS-46 validation")
+    func punycodeAcceptedWithoutIDNAValidation() throws {
+        // SafeURLKit treats xn-- labels as opaque ASCII. A look-alike encoded as punycode
+        // therefore passes the default policy the same way any other public name would —
+        // callers must restrict acceptable hosts upstream (allow-list) or via allowedOrigins.
+        #expect(URLPolicy.publicHTTPS.allows("https://xn--e1afmkfd.xn--p1ai/"))
+        #expect(try URLHost.parse("xn--e1afmkfd.xn--p1ai") == .domain("xn--e1afmkfd.xn--p1ai"))
+
+        // Without an allow-list, a punycoded look-alike of a trusted name is not distinguished
+        // from the trusted name's own ACE form — only the ASCII spelling is compared.
+        let trustedOnly = URLPolicy(allowedOrigins: [.host(.domain("coderpad.io"))])
+        #expect(!trustedOnly.allows("https://xn--e1afmkfd.xn--p1ai/"))
+        #expect(trustedOnly.allows("https://coderpad.io/"))
+    }
+
     @Test(
         "Same host on a different port is a different origin",
         arguments: ["https://coderpad.io:8443/", "https://coderpad.io:8080/", "https://coderpad.io:1/"]

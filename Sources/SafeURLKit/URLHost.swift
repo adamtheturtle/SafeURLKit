@@ -178,6 +178,12 @@ extension URLHost {
     /// differs from the one the network stack will use. Callers that need internationalized
     /// hosts should punycode them before validation.
     ///
+    /// - Important: Already-punycoded (`xn--…`) labels are accepted as opaque ASCII. This
+    ///   package does **not** run IDNA/UTS-46 validation on ACE labels, so look-alike
+    ///   registrations (homographs encoded as punycode) are indistinguishable from ordinary
+    ///   domains here. Validate or restrict IDN input upstream — typically with an allow-list
+    ///   of expected hosts — before calling ``URLPolicy/validate(_:)-(String)``.
+    ///
     /// - Parameter input: A host string, with IPv6 literals still bracketed.
     /// - Returns: The parsed host.
     /// - Throws: A ``HostParsingError`` describing why the host is not usable.

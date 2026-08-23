@@ -130,6 +130,12 @@ entry point, and an approximate implementation inside a security check is worse 
 would produce a host that differs from the one the network stack uses, which is the exact
 condition this package exists to prevent. Punycode the host before validating.
 
+**Punycode is not IDNA validation.** An `xn--` label is treated as ordinary ASCII. SafeURLKit
+does not check that ACE labels are well-formed under UTS-46 or that they are not look-alikes
+of trusted names. When user input may include internationalized domains, normalize and
+allow-list expected hosts *before* validation — do not rely on string policy alone to stop
+homograph phishing.
+
 ## Prior art
 
 The design owes a lot to [doyensec/safeurl](https://github.com/doyensec/safeurl) (Go) for the
