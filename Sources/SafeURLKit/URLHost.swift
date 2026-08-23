@@ -225,7 +225,17 @@ extension URLHost {
         }
 
         if IPv4Address.endsInANumber(domain) {
-            return .ipv4(try IPv4Address.parse(domain))
+            if let ipv4 = try? IPv4Address.parse(domain) {
+                return .ipv4(ipv4)
+            }
+            let labels = domain.split(separator: ".", omittingEmptySubsequences: false)
+            let hasDomainLabel = labels.contains(where: Self.isClearlyDomainLabel)
+            if hasDomainLabel {
+                // Names such as `example.1` end in a number under the standard but are not
+                // IPv4 addresses; treat them as domains when a label is clearly alphabetic.
+            } else {
+                throw HostParsingError.invalidIPv4Address(domain)
+            }
         }
 
         // Hostnames follow the LDH rule (letters, digits, hyphen). Underscores appear in
@@ -247,6 +257,23 @@ extension URLHost {
         }
 
         return .domain(domain)
+    }
+
+    /// Whether `label` is a domain name label rather than an IPv4 address part.
+    private static func isClearlyDomainLabel(_ label: Substring) -> Bool {
+        if label.isEmpty {
+            return false
+        }
+        if label.hasPrefix("0x") || label.hasPrefix("0X") {
+            return false
+        }
+        if label.hasPrefix("0"), label.count > 1, label.dropFirst().allSatisfy(\.isASCIIDigit) {
+            return false
+        }
+        if label.allSatisfy(\.isASCIIDigit) {
+            return false
+        }
+        return label.contains(where: \.isLetter)
     }
 
     /// Percent-decode a host, requiring that the result is valid UTF-8.
