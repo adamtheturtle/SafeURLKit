@@ -216,9 +216,17 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         }
 
         var result = request
-        for name in request.allHTTPHeaderFields.map({ Array($0.keys) }) ?? [] where
-            sensitiveHeaderFields.contains(name.lowercasedASCII) {
+        guard let headers = request.allHTTPHeaderFields else {
+            return result
+        }
+        for name in headers.keys where sensitiveHeaderFields.contains(name.lowercasedASCII) {
             result.setValue(nil, forHTTPHeaderField: name)
+        }
+        // Foundation may keep a canonical spelling after setValue(nil); rebuild the field
+        // map so no case variant of a stripped name survives.
+        if let remaining = result.allHTTPHeaderFields {
+            let kept = remaining.filter { !sensitiveHeaderFields.contains($0.key.lowercasedASCII) }
+            result.allHTTPHeaderFields = kept.isEmpty ? nil : kept
         }
         return result
     }

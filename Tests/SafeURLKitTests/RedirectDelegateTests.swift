@@ -168,6 +168,8 @@ struct RedirectDelegateTests {
         #expect(request?.value(forHTTPHeaderField: "X-CSRF-Token") == nil)
         #expect(request?.value(forHTTPHeaderField: "Session-Token") == nil)
         #expect(request?.value(forHTTPHeaderField: "Accept") == "text/plain")
+        #expect(request?.allHTTPHeaderFields?.keys.contains { $0.lowercased() == "authorization" } != true)
+        #expect(request?.allHTTPHeaderFields?.keys.contains { $0.lowercased() == "api-key" } != true)
     }
 
     @Test("Same-origin redirects preserve sensitive caller headers")
