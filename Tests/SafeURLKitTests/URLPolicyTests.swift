@@ -290,6 +290,34 @@ struct URLPolicyTests {
         #expect(error.description.contains("127.0.0.1"))
         #expect(error.description.contains("loopback"))
     }
+
+    @Test("Resolved addresses can be re-checked after DNS lookup")
+    func validateResolvedAddresses() throws {
+        let policy = URLPolicy.publicHTTPS
+
+        #expect(throws: URLValidationError.self) {
+            try policy.validate(resolvedAddress: IPv4Address(127, 0, 0, 1))
+        }
+        #expect(throws: URLValidationError.self) {
+            try policy.validate(resolvedAddress: IPv4Address(169, 254, 169, 254))
+        }
+        #expect(throws: URLValidationError.self) {
+            try policy.validate(resolvedAddress: IPv6Address.parse("::1"))
+        }
+
+        // Public addresses still fail the default policy's "no IP literals" rule, which is
+        // what you want when connecting by address rather than by name.
+        #expect(throws: URLValidationError.ipLiteralHost(.ipv4(IPv4Address(8, 8, 8, 8)))) {
+            try policy.validate(resolvedAddress: IPv4Address(8, 8, 8, 8))
+        }
+
+        let literalsOK = URLPolicy(allowsIPLiteralHosts: true)
+        try literalsOK.validate(resolvedAddress: IPv4Address(8, 8, 8, 8))
+        try literalsOK.validate(resolvedHost: .ipv4(IPv4Address(93, 184, 216, 34)))
+        #expect(throws: URLValidationError.self) {
+            try literalsOK.validate(resolvedAddress: IPv4Address(10, 0, 0, 1))
+        }
+    }
 }
 
 extension URLPolicy {
