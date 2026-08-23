@@ -139,12 +139,19 @@ struct IPv4ParsingTests {
     }
 
     @Test(
+        "Hosts with alphabetic labels and a numeric suffix parse as domains",
+        arguments: ["example.1", "example.0x1"]
+    )
+    func alphabeticNumericSuffix(_ input: String) throws {
+        #expect(try URLHost.parse(input) == .domain(input.lowercasedASCII))
+    }
+
+    @Test(
         "Hosts whose last label is numeric always route to the IPv4 parser",
-        arguments: ["example.1", "example.0x1", "a.b.c.0777", "1"]
+        arguments: ["a.b.c.0777", "1"]
     )
     func numeric(_ input: String) {
-        // whatwg/url#619: `example.1` is not a domain with a numeric TLD, it is an invalid
-        // IPv4 address, and must never be treated as a name.
+        // Purely numeric hosts still route to the IPv4 parser.
         #expect(IPv4Address.endsInANumber(input))
     }
 
