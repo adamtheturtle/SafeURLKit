@@ -223,7 +223,7 @@ extension URLPolicy {
         guard allowedSchemes.contains(parsed.scheme) else {
             throw .disallowedScheme(parsed.scheme)
         }
-        if !allowsCredentials, parsed.userinfo != nil {
+        if !allowsCredentials, let userinfo = parsed.userinfo, !userinfo.isEmpty {
             throw .credentialsPresent
         }
         if !allowsFragment, parsed.fragment != nil {

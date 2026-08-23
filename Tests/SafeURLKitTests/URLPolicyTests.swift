@@ -97,10 +97,9 @@ struct URLPolicyTests {
         #expect(throws: URLValidationError.credentialsPresent) {
             try URLPolicy.publicHTTPS.validate("https://user@coderpad.io/")
         }
-        // A bare `@` still counts: it is the marker that a userinfo section was written.
-        #expect(throws: URLValidationError.credentialsPresent) {
-            try URLPolicy.publicHTTPS.validate("https://@coderpad.io/")
-        }
+        // A bare `@` is an empty userinfo section, not credentials.
+        #expect(try URLPolicy.publicHTTPS.validate("https://@coderpad.io/").host
+            == .domain("coderpad.io"))
     }
 
     @Test("Fragments are rejected by default and allowed on request")
