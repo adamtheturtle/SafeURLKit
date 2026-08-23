@@ -17,6 +17,8 @@ struct URLPolicyTests {
         let policy = URLPolicy(allowedOrigins: [.hostSuffix("example.com")])
         #expect(policy.allows("https://www.example.com/"))
         #expect(policy.allows("https://example.com/"))
+    }
+
     @Test("Post-DNS validation rejects reserved addresses from public hostnames")
     func resolvedAddressValidation() throws {
         let policy = URLPolicy.publicHTTPS
