@@ -22,7 +22,7 @@ import SafeURLKit
 
 let policy = URLPolicy(
     allowedSchemes: ["https"],
-    allowedOrigins: [.hostSuffix("example.com")]
+    allowedOrigins: [.hostSuffix("coderpad.io")]
 )
 
 let validated = try policy.validate(userSuppliedURLString)
@@ -80,8 +80,12 @@ them is an explicit argument, so it shows up in a diff as a decision rather than
 
 Origin rules are `.origin(scheme:host:port:)` for an exact port-aware origin, `.host(_:)` for
 an exact host on any permitted port, and `.hostSuffix(_:)` for a suffix anchored at a label
-boundary - so `.hostSuffix("example.com")` matches `app.example.com` and does not match
-`evilexample.com`.
+boundary - so `.hostSuffix("coderpad.io")` matches `app.coderpad.io` and does not match
+`evilcoderpad.io`.
+
+`example.com` and other IANA special-use names are blocked by default; use a real production
+domain in allow-lists, or set `allowsSpecialUseHostNames: true` when you deliberately need
+documentation or test names.
 
 `portRule` and `allowedOrigins` are separate checks and both must pass, so an exact origin on
 a non-default port needs the port rule to admit it too:
