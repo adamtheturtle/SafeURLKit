@@ -257,31 +257,7 @@ extension URLPolicy {
         // A scheme with no default port and no port written names no destination port at
         // all, so there is nothing a port rule could approve. Reject rather than let a
         // placeholder port stand in for one - only reachable via a custom allowed scheme.
-        guard let port = parsed.port ?? Self.defaultPort(forScheme: parsed.scheme) else {
-            throw .malformedURL(
-                reason: "the scheme \(parsed.scheme.debugDescription) has no default port "
-                    + "and the URL does not give one"
-            )
-        }
-
-        // Port 0 is reserved and never a usable destination; reject it under every port
-        // rule so `.any` cannot accidentally admit it.
-        if port == 0 {
-            throw .disallowedPort(0)
-        }
-
-        switch portRule {
-        case .defaultForScheme:
-            guard port == Self.defaultPort(forScheme: parsed.scheme) else {
-                throw .disallowedPort(port)
-            }
-        case .any:
-            break
-        case let .allowed(ports):
-            guard ports.contains(port) else {
-                throw .disallowedPort(port)
-            }
-        }
+        let port = try checkedPort(scheme: parsed.scheme, parsedPort: parsed.port)
 
         try checkHost(host, scheme: parsed.scheme, port: port)
 
@@ -300,6 +276,37 @@ extension URLPolicy {
         let url = try crossCheckedURL(urlString, scheme: parsed.scheme, host: host, port: parsed.port)
 
         return ValidatedURL(url: url, scheme: parsed.scheme, host: host, port: port)
+    }
+
+    /// Resolve the effective port and enforce ``portRule``, including the unconditional
+    /// rejection of port 0.
+    func checkedPort(scheme: String, parsedPort: Int?) throws(URLValidationError) -> Int {
+        guard let port = parsedPort ?? Self.defaultPort(forScheme: scheme) else {
+            throw .malformedURL(
+                reason: "the scheme \(scheme.debugDescription) has no default port "
+                    + "and the URL does not give one"
+            )
+        }
+
+        // Port 0 is reserved and never a usable destination; reject it under every port
+        // rule so `.any` cannot accidentally admit it.
+        if port == 0 {
+            throw .disallowedPort(0)
+        }
+
+        switch portRule {
+        case .defaultForScheme:
+            guard port == Self.defaultPort(forScheme: scheme) else {
+                throw .disallowedPort(port)
+            }
+        case .any:
+            break
+        case let .allowed(ports):
+            guard ports.contains(port) else {
+                throw .disallowedPort(port)
+            }
+        }
+        return port
     }
 
     /// Validate a `URL` against this policy.
