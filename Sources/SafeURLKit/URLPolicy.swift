@@ -110,13 +110,23 @@ public struct URLPolicy: Sendable, Hashable {
     /// `.local`, or `.internal`. Defaults to `false`. See ``SpecialUseDomains``.
     public var allowsSpecialUseHostNames: Bool
 
-    /// Whether an IP-literal host may be in a reserved range - loopback, RFC 1918, the
-    /// link-local space holding the cloud metadata endpoint, and the rest. Defaults to
-    /// `false`. See ``SpecialPurposeAddresses``.
+    /// Whether an IP-literal host may be in *any* reserved range - loopback, RFC 1918, the
+    /// link-local space holding the cloud metadata endpoint, multicast, and the rest.
+    /// Defaults to `false`. See ``SpecialPurposeAddresses``.
     ///
     /// Only meaningful alongside ``allowsIPLiteralHosts``, since otherwise no literal gets
-    /// this far.
+    /// this far. Prefer ``permittedSpecialPurposeAddressNames`` when only a subset of the
+    /// registry (for example `"loopback"`) should be admitted: flipping this flag to `true`
+    /// unlocks the entire IANA table at once.
     public var allowsSpecialPurposeAddresses: Bool
+
+    /// Registry entry names from ``SpecialPurposeAddresses`` that are permitted even when
+    /// ``allowsSpecialPurposeAddresses`` is `false`. Empty by default.
+    ///
+    /// Names are the human-readable strings on each registry entry, such as `"loopback"` or
+    /// `"private-use (RFC 1918)"`. Use this to allow a local test server without also
+    /// admitting multicast, `0.0.0.0`, or cloud-metadata link-local space.
+    public var permittedSpecialPurposeAddressNames: Set<String>
 
     /// The greatest acceptable UTF-8 byte count for the URL string, or `nil` for no
     /// limit. Defaults to 2048, the conventional interoperable ceiling.
@@ -139,6 +149,7 @@ public struct URLPolicy: Sendable, Hashable {
         allowsIPLiteralHosts: Bool = false,
         allowsSpecialUseHostNames: Bool = false,
         allowsSpecialPurposeAddresses: Bool = false,
+        permittedSpecialPurposeAddressNames: Set<String> = [],
         maximumLength: Int? = 2048,
         maximumPathSegments: Int? = 256
     ) {
@@ -164,6 +175,7 @@ public struct URLPolicy: Sendable, Hashable {
         self.allowsIPLiteralHosts = allowsIPLiteralHosts
         self.allowsSpecialUseHostNames = allowsSpecialUseHostNames
         self.allowsSpecialPurposeAddresses = allowsSpecialPurposeAddresses
+        self.permittedSpecialPurposeAddressNames = permittedSpecialPurposeAddressNames
         self.maximumLength = maximumLength
         self.maximumPathSegments = maximumPathSegments
     }
@@ -462,9 +474,16 @@ extension URLPolicy {
         if !allowsSpecialUseHostNames, let suffix = SpecialUseDomains.matches(host) {
             throw .specialUseHostName(host: host.description, suffix: suffix)
         }
-        if !allowsSpecialPurposeAddresses, let match = SpecialPurposeAddresses.match(host) {
+        if let match = SpecialPurposeAddresses.match(host), !permitsSpecialPurpose(match) {
             throw .specialPurposeAddress(match)
         }
+    }
+
+    /// Whether a special-purpose match is admitted by ``allowsSpecialPurposeAddresses`` or
+    /// ``permittedSpecialPurposeAddressNames``.
+    func permitsSpecialPurpose(_ match: SpecialPurposeMatch) -> Bool {
+        allowsSpecialPurposeAddresses
+            || permittedSpecialPurposeAddressNames.contains(match.name)
     }
 
     /// Like ``checkHost(_:)``, but skips the special-use host name block when the host is
@@ -482,7 +501,7 @@ extension URLPolicy {
         if !allowsSpecialUseHostNames, !explicitlyAllowed, let suffix = SpecialUseDomains.matches(host) {
             throw .specialUseHostName(host: host.description, suffix: suffix)
         }
-        if !allowsSpecialPurposeAddresses, let match = SpecialPurposeAddresses.match(host) {
+        if let match = SpecialPurposeAddresses.match(host), !permitsSpecialPurpose(match) {
             throw .specialPurposeAddress(match)
         }
         if !allowsIPLiteralHosts, host.isIPAddress {

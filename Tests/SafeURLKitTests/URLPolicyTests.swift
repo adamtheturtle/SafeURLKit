@@ -271,6 +271,30 @@ struct URLPolicyTests {
         #expect(policy.allows("http://[::1]:3000/"))
     }
 
+    @Test("permittedSpecialPurposeAddressNames admits a subset without unlocking the registry")
+    func permittedSpecialPurposeNames() throws {
+        let loopbackOnly = URLPolicy(
+            allowedSchemes: ["http"],
+            portRule: .any,
+            allowsIPLiteralHosts: true,
+            permittedSpecialPurposeAddressNames: ["loopback"]
+        )
+        #expect(loopbackOnly.allows("http://127.0.0.1:8080/"))
+        #expect(loopbackOnly.allows("http://[::1]:8080/"))
+        #expect(!loopbackOnly.allows("http://169.254.169.254/"))
+        #expect(!loopbackOnly.allows("http://10.0.0.1/"))
+        #expect(!loopbackOnly.allows("http://224.0.0.1/"))
+        #expect(!loopbackOnly.allows("http://0.0.0.0/"))
+
+        // The coarse flag still unlocks everything when set.
+        let all = URLPolicy(
+            allowsIPLiteralHosts: true,
+            allowsSpecialPurposeAddresses: true
+        )
+        #expect(all.allows("https://224.0.0.1/"))
+        #expect(all.allows("https://0.0.0.0/"))
+    }
+
     @Test("Reserved host names are rejected by default")
     func reservedNames() throws {
         for urlString in [
