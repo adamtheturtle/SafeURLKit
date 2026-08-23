@@ -17,6 +17,7 @@ struct URLPolicyTests {
         let policy = URLPolicy(allowedOrigins: [.hostSuffix("example.com")])
         #expect(policy.allows("https://www.example.com/"))
         #expect(policy.allows("https://example.com/"))
+    }
 
     @Test("Incompatible origin port and portRule trap at configuration time")
     func incompatibleOriginPortTraps() async {
