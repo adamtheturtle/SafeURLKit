@@ -94,6 +94,36 @@ struct ParserDifferentialTests {
         #expect(validated.url.absoluteString == "https://coderpad.io:8443/a?b=c#d")
     }
 
+    @Test("Parser agreement is pinned for spellings Foundation historically varies on")
+    func foundationEdgeSpellingsAgree() throws {
+        // These are the forms most likely to drift across Foundation versions (IPv6
+        // brackets, trailing root dots, mixed-case schemes). If a future toolchain
+        // disagrees, validation must reject — never silently prefer one reading.
+        for urlString in [
+            "https://[::1]/",
+            "https://[::ffff:127.0.0.1]/",
+            "https://coderpad.io./",
+            "HTTPS://coderpad.io/"
+        ] {
+            let validated = try Self.permissive.validate(urlString)
+            let components = try #require(URLComponents(string: urlString))
+            let foundationHost = try #require(components.percentEncodedHost)
+            let bracketed =
+                foundationHost.contains(":") && !foundationHost.hasPrefix("[")
+                    ? "[\(foundationHost)]"
+                    : foundationHost
+            if let parsed = try? URLHost.parse(bracketed) {
+                #expect(parsed == validated.host)
+            } else {
+                let ourRendering = try #require(
+                    URLComponents(string: "https://\(validated.host)/")?.percentEncodedHost
+                )
+                #expect(ourRendering == foundationHost)
+            }
+            #expect(components.port == nil)
+        }
+    }
+
     @Test("A URL Foundation cannot parse at all is rejected")
     func foundationCannotParse() {
         // Nothing here should ever reach the disagreement check - the string parser refuses

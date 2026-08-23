@@ -497,6 +497,13 @@ extension URLPolicy {
     /// ``URLHost/parse(_:)`` and the two ``URLHost`` values are compared, so `[::1]` versus
     /// `::1` and `0x7f.1` versus `127.0.0.1` are agreements, while a genuinely different
     /// destination is not.
+    ///
+    /// Foundation's `URL` / `URLComponents` behaviour can differ across OS and toolchain
+    /// versions. Disagreement is always a rejection (fail closed): a URL that parses one
+    /// way here and another way in the networking stack must not be fetched. CI runs the
+    /// same suite on macOS and Linux; treat a new ``URLValidationError/parserDisagreement``
+    /// on an upgraded Foundation as a signal to tighten the string rules, not to loosen
+    /// this cross-check.
     private func crossCheckedURL(
         _ urlString: String,
         host: URLHost,
