@@ -185,6 +185,50 @@ struct RedirectDelegateTests {
         #expect(request?.value(forHTTPHeaderField: "API-Key") == "secret")
     }
 
+    @Test("Punycode hosts stay same-origin when Foundation reports them decoded")
+    func punycodeSameOriginHeaderPreservation() throws {
+        let host = try URLHost.parse("xn--e1afmkfd.xn--p1ai")
+        let policy = URLPolicy(allowedOrigins: [.host(host)])
+        let delegate = PolicyEnforcingRedirectDelegate(policy: policy)
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.finishTasksAndInvalidate() }
+
+        let original = try #require(URL(string: "https://xn--e1afmkfd.xn--p1ai/"))
+        let target = try #require(URL(string: "https://xn--e1afmkfd.xn--p1ai/next"))
+        #expect(PolicyEnforcingRedirectDelegate.hostsEquivalent(original, target))
+
+        let response = try #require(
+            HTTPURLResponse(
+                url: original,
+                statusCode: 302,
+                httpVersion: nil,
+                headerFields: ["Location": "/next"]
+            )
+        )
+
+        var result: URLRequest?
+        var request = URLRequest(url: target)
+        request.setValue("Bearer secret", forHTTPHeaderField: "Authorization")
+        delegate.urlSession(
+            session,
+            task: session.dataTask(with: original),
+            willPerformHTTPRedirection: response,
+            newRequest: request
+        ) { result = $0 }
+
+        #expect(result?.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
+    }
+
+    @Test("Foundation host encodings match across punycode spellings")
+    func foundationHostEncodingEquivalence() throws {
+        let left = try #require(URL(string: "https://xn--e1afmkfd.xn--p1ai/"))
+        let right = try #require(URL(string: "https://xn--e1afmkfd.xn--p1ai/next"))
+        #expect(
+            PolicyEnforcingRedirectDelegate.foundationHostEncoding(left)
+                == PolicyEnforcingRedirectDelegate.foundationHostEncoding(right)
+        )
+    }
+
     @Test("Equivalent host spellings count as same-origin for header preservation")
     func semanticSameOriginHeaderPreservation() throws {
         let policy = URLPolicy(
