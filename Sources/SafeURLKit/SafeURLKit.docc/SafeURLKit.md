@@ -12,7 +12,7 @@ returns a ``ValidatedURL`` or throws a ``URLValidationError`` naming the check t
 ```swift
 let policy = URLPolicy(
     allowedSchemes: ["https"],
-    allowedOrigins: [.hostSuffix("example.com")]
+    allowedOrigins: [.hostSuffix("coderpad.io")]
 )
 let validated = try policy.validate(userSuppliedURLString)
 let (data, _) = try await URLSession.shared.data(from: validated.url)
