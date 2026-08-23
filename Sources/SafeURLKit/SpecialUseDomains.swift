@@ -52,7 +52,17 @@ public enum SpecialUseDomains {
         "example.net",
         "example.org",
         "onion",
-        "alt"
+        "alt",
+        // DNS rebinding / "point this name at any IP" services. A hostname under these
+        // suffixes is a public DNS name that resolves to whatever address the registrant
+        // chose, including loopback and link-local, so string-level validation alone cannot
+        // treat it as a safe public host.
+        "nip.io",
+        "sslip.io",
+        "xip.io",
+        "localtest.me",
+        "vcap.me",
+        "lvh.me"
     ]
 
     /// The reserved suffix `host` falls under, or `nil` if it is an ordinary public name.
