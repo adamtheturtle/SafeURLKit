@@ -23,7 +23,10 @@ import Foundation
 /// ```swift
 /// let policy = URLPolicy.publicHTTPS
 /// let validated = try policy.validate(urlString)
-/// let delegate = PolicyEnforcingRedirectDelegate(policy: policy)
+/// let delegate = PolicyEnforcingRedirectDelegate(
+///     policy: policy,
+///     validatedInitialURL: validated
+/// )
 /// let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
 /// let (data, response) = try await session.data(from: validated.url)
 /// ```
@@ -39,6 +42,13 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
     @unchecked Sendable {
     /// The policy applied to each redirect target.
     public let policy: URLPolicy
+
+    /// The validated URL the session was started with, when the caller supplied one.
+    ///
+    /// When set, the delegate verifies that each redirect's source URL is same-origin with
+    /// this value before accepting the hop, so an unvalidated initial request cannot slip
+    /// through alongside policy-checked redirect targets.
+    public let validatedInitialURL: ValidatedURL?
 
     /// Called when a redirect is refused, with the rejected URL and the reason.
     ///
@@ -56,11 +66,14 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
     /// - Parameters:
     ///   - policy: The policy to apply to each redirect target. Usually the same policy the
     ///     original URL was validated against.
+    ///   - validatedInitialURL: When provided, redirect source URLs must be same-origin
+    ///     with this validated URL.
     ///   - onRejection: An optional observer for refused redirects.
     ///   - sensitiveHeaderFields: Fields to strip on cross-origin redirects. Names are
     ///     compared case-insensitively.
     public init(
         policy: URLPolicy,
+        validatedInitialURL: ValidatedURL? = nil,
         onRejection: (@Sendable (URL, URLValidationError) -> Void)? = nil,
         sensitiveHeaderFields: Set<String> = [
             "authorization", "proxy-authorization", "cookie", "cookie2", "api-key",
@@ -68,6 +81,7 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
         ]
     ) {
         self.policy = policy
+        self.validatedInitialURL = validatedInitialURL
         self.onRejection = onRejection
         self.sensitiveHeaderFields = Set(sensitiveHeaderFields.map(\.lowercasedASCII))
         super.init()
@@ -88,6 +102,11 @@ public final class PolicyEnforcingRedirectDelegate: NSObject, URLSessionTaskDele
             return
         }
         do {
+            if let initial = validatedInitialURL, let source = response.url {
+                guard Self.sameOrigin(source, initial.url) else {
+                    throw URLValidationError.originNotAllowed(origin: source.absoluteString)
+                }
+            }
             let validated = try validateRedirect(response: response, generatedURL: url)
             guard validated.url.absoluteString == url.absoluteString else {
                 throw URLValidationError.parserDisagreement(

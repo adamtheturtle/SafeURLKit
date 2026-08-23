@@ -178,6 +178,40 @@ struct RedirectDelegateTests {
         let policy = URLPolicy(allowedSchemes: ["http"])
         #expect(PolicyEnforcingRedirectDelegate(policy: policy).policy == policy)
     }
+
+    @Test("validatedInitialURL rejects redirects whose source URL is not same-origin")
+    func validatedInitialURLEnforced() throws {
+        let policy = URLPolicy(allowedOrigins: [.hostSuffix("coderpad.io")])
+        let validated = try policy.validate("https://coderpad.io/")
+        let delegate = PolicyEnforcingRedirectDelegate(
+            policy: policy,
+            validatedInitialURL: validated
+        )
+
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.finishTasksAndInvalidate() }
+
+        // Response claims to redirect from evil.com even though the session started at coderpad.io.
+        let mismatchedSource = try #require(URL(string: "https://evil.com/"))
+        let target = try #require(URL(string: "https://app.coderpad.io/next"))
+        let response = try #require(
+            HTTPURLResponse(
+                url: mismatchedSource,
+                statusCode: 302,
+                httpVersion: nil,
+                headerFields: ["Location": "https://app.coderpad.io/next"]
+            )
+        )
+
+        var result: URLRequest?
+        delegate.urlSession(
+            session,
+            task: session.dataTask(with: validated.url),
+            willPerformHTTPRedirection: response,
+            newRequest: URLRequest(url: target)
+        ) { result = $0 }
+        #expect(result == nil)
+    }
 }
 
 /// Collects the refusals a delegate reports. `URLSession` may deliver delegate messages on
