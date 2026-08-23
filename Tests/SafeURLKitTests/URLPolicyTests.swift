@@ -308,4 +308,26 @@ struct URLPolicyTests {
         #expect(error.description.contains("port"))
         #expect(!error.description.contains("reads the host"))
     }
+
+    // MARK: Post-DNS resolved addresses
+
+    @Test("Post-DNS checks accept public addresses under publicHTTPS")
+    func resolvedPublicAddresses() throws {
+        try URLPolicy.publicHTTPS.validate(resolvedAddress: IPv4Address.parse("93.184.216.34"))
+        try URLPolicy.publicHTTPS.validate(resolvedAddress: IPv6Address.parse("2606:4700::1111"))
+        try URLPolicy.publicHTTPS.validate(resolvedHost: .ipv4(IPv4Address.parse("8.8.8.8")))
+    }
+
+    @Test("Post-DNS checks still reject reserved addresses")
+    func resolvedReservedAddresses() throws {
+        #expect(throws: URLValidationError.self) {
+            try URLPolicy.publicHTTPS.validate(resolvedAddress: IPv4Address.parse("127.0.0.1"))
+        }
+        #expect(throws: URLValidationError.self) {
+            try URLPolicy.publicHTTPS.validate(resolvedAddress: IPv4Address.parse("169.254.169.254"))
+        }
+        #expect(throws: URLValidationError.self) {
+            try URLPolicy.publicHTTPS.validate(resolvedAddress: IPv6Address.parse("::1"))
+        }
+    }
 }
