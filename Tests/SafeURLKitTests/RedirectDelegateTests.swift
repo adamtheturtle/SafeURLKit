@@ -146,15 +146,20 @@ struct RedirectDelegateTests {
         #expect(result?.url?.absoluteString == "https://coderpad.io/next")
     }
 
-    @Test("Cross-origin redirects strip sensitive caller headers")
+    @Test("Cross-origin redirects strip sensitive caller headers regardless of header name casing")
     func crossOriginHeaderSanitization() throws {
         let delegate = PolicyEnforcingRedirectDelegate(policy: .publicHTTPS)
         let request = try decision(
             delegate,
             redirectingTo: "https://github.com/",
-            headers: ["Authorization": "Bearer secret", "API-Key": "secret", "Accept": "text/plain"]
+            headers: [
+                "authorization": "Bearer secret",
+                "API-Key": "secret",
+                "Accept": "text/plain"
+            ]
         )
 
+        #expect(request?.value(forHTTPHeaderField: "authorization") == nil)
         #expect(request?.value(forHTTPHeaderField: "Authorization") == nil)
         #expect(request?.value(forHTTPHeaderField: "API-Key") == nil)
         #expect(request?.value(forHTTPHeaderField: "Accept") == "text/plain")
