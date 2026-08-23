@@ -55,18 +55,20 @@ extension OriginRule {
     /// A rule matching one exact origin, written as a URL string.
     ///
     /// This is the convenient way to write configured origins that arrive as strings, such
-    /// as a self-hosted instance's base URL. Returns `nil` if the string is not a URL with
-    /// a parseable host, so a misconfigured value fails closed instead of becoming a rule
-    /// that matches nothing in a way nobody notices.
+    /// as a self-hosted instance's base URL. Throws if the string is not a URL with a
+    /// parseable host, so a misconfigured value fails loudly at configuration time instead
+    /// of becoming a silent `nil` that an allow-list never notices is missing.
     ///
     /// - Parameter urlString: An absolute URL, for example `"https://example.com:8443"`.
     ///   Any path, query, and fragment are ignored.
-    public static func origin(matching urlString: String) -> OriginRule? {
+    public static func origin(matching urlString: String) throws -> OriginRule {
         guard
             let parsed = try? ParsedURLString.parse(urlString),
             let host = try? URLHost.parse(parsed.hostText)
         else {
-            return nil
+            throw URLValidationError.malformedURL(
+                reason: "cannot build an origin rule from \(urlString.debugDescription)"
+            )
         }
         return .origin(scheme: parsed.scheme, host: host, port: parsed.port)
     }
