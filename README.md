@@ -60,7 +60,7 @@ Loosening any of them is an explicit argument, so it shows up in a diff as a dec
 | Axis | Default | Notes |
 | --- | --- | --- |
 | `allowedSchemes` | `["https"]` | Compared case-insensitively |
-| `allowedOrigins` | `nil` | `nil` is "any host"; `[]` rejects everything, so a misconfiguration fails closed |
+| `allowedOrigins` | `nil` | `nil` permits any host. An empty list rejects requests. |
 | `portRule` | `.defaultForScheme` | Also `.any` and `.allowed(Set<Int>)` |
 | `allowsCredentials` | `false` | Blocks `https://trusted.com@evil.com/` |
 | `allowsFragment` | `false` | |
@@ -102,13 +102,14 @@ Check the status code, or pass an `onRejection` closure to observe refusals.
 ## Scope
 
 **This is URL-string policy validation.**
-It cannot address DNS rebinding: a name that passes the check can resolve to `127.0.0.1` a moment later, and `URLSession` exposes no hook between resolution and connection at which the resolved address could be re-checked.
+It cannot address DNS rebinding: a name that passes the check can resolve to `127.0.0.1` a moment later, and `URLSession` manages resolution and connection internally, beyond the library's validation step.
 
 The defences that do work live at other layers - resolving first and connecting to a vetted address, as [ssrf_filter](https://github.com/arkadiyt/ssrf_filter) does in Ruby, or an egress proxy such as [Smokescreen](https://github.com/stripe/smokescreen) - and neither is buildable on `URLSession` alone.
 Both are non-goals here.
 
 **Internationalized hosts are refused, not transcoded.**
-Foundation exposes no IDNA/UTS-46 entry point, and an approximate implementation inside a security check is worse than none: it would produce a host that differs from the one the network stack uses, which is the exact condition this package exists to prevent.
+Foundation handles IDNA conversion internally.
+A separate approximation could produce a different host from the one the network stack uses.
 Punycode the host before validating.
 
 **Punycode is not IDNA validation.**
@@ -118,8 +119,8 @@ When user input may include internationalized domains, normalize and allow-list 
 
 ## Prior art
 
-The design owes a lot to [doyensec/safeurl](https://github.com/doyensec/safeurl) (Go) for the config-object shape, [arkadiyt/ssrf_filter](https://github.com/arkadiyt/ssrf_filter) (Ruby) for the prefix table and per-hop revalidation, and [JordanMilne/Advocate](https://github.com/JordanMilne/Advocate) (Python) for keeping the policy object separate from the transport.
-The test corpus draws on the [PortSwigger URL validation bypass cheat sheet](https://portswigger.net/research/introducing-the-url-validation-bypass-cheat-sheet) and the CVE-2020-28360 regression cases from [frenchbread/private-ip](https://github.com/frenchbread/private-ip).
+The design owes a lot to [doyensec/safeurl](https://github.com/doyensec/safeurl) (Go) for the configuration object, [arkadiyt/ssrf_filter](https://github.com/arkadiyt/ssrf_filter) (Ruby) for the prefix table and per-hop revalidation, and [JordanMilne/Advocate](https://github.com/JordanMilne/Advocate) (Python) for keeping the policy object separate from the transport.
+The tests include examples from the [PortSwigger's guide to URL validation](https://portswigger.net/research/introducing-the-url-validation-bypass-cheat-sheet) and the CVE-2020-28360 regression cases from [frenchbread/private-ip](https://github.com/frenchbread/private-ip).
 
 ## Requirements
 
