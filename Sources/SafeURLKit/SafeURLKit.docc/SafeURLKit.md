@@ -37,7 +37,7 @@ Characters that parsers are known to disagree about - tab, newline, backslash - 
 
 ### Scope
 
-This is string-level validation, and it cannot address DNS rebinding: a name that passes may resolve to loopback a moment later, and `URLSession` offers no hook between resolution and connection.
+This is string-level validation, and it cannot address DNS rebinding: a name that passes may resolve to loopback a moment later, and `URLSession` handles resolution and connection internally.
 The defences that do work - resolving first and connecting to a vetted address, or an egress proxy such as Smokescreen - are not buildable on `URLSession`, and are a non-goal here.
 
 What is in scope, and is where string checks are most often bypassed in practice, is redirects: ``PolicyEnforcingRedirectDelegate`` re-applies the policy to every hop.
